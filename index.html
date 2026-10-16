@@ -1,4 +1,3 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -199,7 +198,8 @@
   .qcard.drawing #ink { pointer-events: auto; cursor: crosshair; }
   .qcard.drawing #note { pointer-events: none; }
   .stage-area.scene-mode .qcard { height: auto; }
-  .stage-area.scene-mode .qcard.has-img { height: min(72vh, calc(100vh - 330px)); }
+  /* Work time: a picture is a short banner, so the water, mud and sand stay clear for the animals */
+  .stage-area.scene-mode .qcard.has-img { height: min(40vh, calc(100vh - 380px), 420px); }
   .stage-area.scene-mode .qcard:not(.has-img) .qbody { flex: none; }
   .stage-area.scene-mode .qcard:not(.has-img) #note { flex: none; }
   /* floating card tools must never sit on top of typed text: leave room under it once there is text or the box is focused */
@@ -231,6 +231,8 @@
   .stage-area.scene-mode .qtools { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); padding: 5px 8px; border-radius: 999px; background: rgba(255,255,255,.96); box-shadow: var(--shadow); opacity: 0; pointer-events: none; white-space: nowrap; flex-wrap: nowrap; }
   .stage-area.scene-mode .qcard:hover .qtools, .stage-area.scene-mode .qcard:focus-within .qtools, .stage-area.scene-mode .qcard.drawing .qtools { opacity: 1; pointer-events: auto; }
   .stage-area.scene-mode .qtools .empty-hint { display: none; }
+  /* the floating tools wrap onto a second row instead of spilling past a narrow card */
+  .qcard.has-img .qtools, .stage-area.scene-mode .qtools { width: max-content; max-width: calc(100% - 16px); flex-wrap: wrap; white-space: normal; border-radius: 18px; }
 
   /* ---------- names ---------- */
   .names { flex-direction: column; gap: 10px; min-height: 0; }
@@ -558,7 +560,7 @@
   body.phone .stage-area .names { flex: 1 1 0; min-height: 0; }
   body.phone .stage-area .timer { flex: none; order: 2; }
   body.phone .stage-area.scene-mode .qcard { flex: none; max-height: 45%; }
-  body.phone .stage-area.scene-mode .qcard.has-img { height: 45%; }
+  body.phone .stage-area.scene-mode .qcard.has-img { height: 35%; }
   body.phone .stage-area.scene-mode .names { flex: none; max-height: 40%; }
   body.phone .stage-area.scene-mode .timer { align-self: flex-end; width: min(240px, 100%) !important; }
   body.phone .stage-area .timer .t-time { font-size: 2.6rem !important; }
@@ -589,7 +591,7 @@
   @media (orientation: landscape) {
     body.phone .stage-area.scene-mode { flex-direction: row; align-items: flex-start; }
     body.phone .stage-area.scene-mode .qcard { flex: 1 1 0; max-height: 70%; }
-    body.phone .stage-area.scene-mode .qcard.has-img { height: 70%; }
+    body.phone .stage-area.scene-mode .qcard.has-img { height: 50%; }
     body.phone .stage-area.scene-mode .timer { align-self: flex-start; width: 200px !important; }
     body.phone .stage-area:not(.scene-mode) { flex-direction: row; }
     body.phone .stage-area .timer .t-time { font-size: 2rem !important; }
@@ -741,7 +743,8 @@
         </div>
         <span class="empty-hint" id="empty">Paste a screenshot with <kbd>Ctrl</kbd>+<kbd>V</kbd> or drop images here</span>
         <button id="pasteBtn" type="button">Paste</button>
-        <button id="fileBtn" type="button">Add picture</button>
+        <button id="fileBtn" type="button" title="Add one or more pictures to the queue">+ Picture</button>
+        <button id="textBtn" type="button" title="Add a text-only question to the queue">+ Text</button>
         <input id="fileInput" type="file" accept="image/*" multiple hidden>
       </div>
     </section>
@@ -950,7 +953,7 @@
     </section>
     <details class="more">
       <summary>Backup and restore</summary>
-      <p>Your classes are saved in this browser only. Back them up so a cleared browser or a new computer doesn't mean retyping every list. Backups hold class names, groups and names. Screenshots are not included.</p>
+      <p>Your classes are saved in this browser only. Back them up so a cleared browser or a new computer doesn't mean retyping every list. Backups hold class names, groups, names and typed questions (text slides too). Pictures are not included.</p>
       <div class="row">
         <button id="bkCopy" type="button">Copy backup text</button>
         <button id="bkFileBtn" type="button">Restore from file…</button>
@@ -999,7 +1002,7 @@
       scores: blank(function () { return 0; }),
       pos: blank(function () { return 0; }),        // snakes and ladders squares (0 = start)
       history: [],                                   // picked students, one array per round
-      absent: [], absentDay: "", note: "",
+      absent: [], absentDay: "", note: "", wnote: "",        // note = Question page text, wnote = Work time text
       animals: { total: 0, today: 0, day: "", seen: {} }   // mangrove collection, carried across lessons
     };
   }
@@ -1025,6 +1028,7 @@
     c.absent = strArr(d.absent);
     c.absentDay = typeof d.absentDay === "string" ? d.absentDay : "";
     c.note = typeof d.note === "string" ? d.note : "";
+    c.wnote = typeof d.wnote === "string" ? d.wnote : "";
     var an = d.animals && typeof d.animals === "object" ? d.animals : {};
     c.animals = { total: Math.max(0, Math.round(+an.total) || 0), today: Math.max(0, Math.round(+an.today) || 0), day: typeof an.day === "string" ? an.day : "", seen: {} };
     if (an.seen && typeof an.seen === "object") Object.keys(an.seen).forEach(function (k) { var v = Math.round(+an.seen[k]); if (v > 0) c.animals.seen[k] = v; });
@@ -1451,8 +1455,7 @@
     var c = C();
     renderTabs(); applyGroupCount(); fillEditors(); renderRoster(); renderLog();
     resetCards();
-    note.value = c.note || "";
-    useSlidesFor(c.id); renderSlides();
+    useSlidesFor(skey()); renderSlides();
     refresh();
     nsClassChanged();
   }
@@ -1476,8 +1479,11 @@
   function deleteClass() {
     if (classes.length < 2) { toast("You need at least one class"); return; }
     var c = C(), idx = classes.indexOf(c);
-    (slidesBy[c.id] || []).forEach(function (s) { URL.revokeObjectURL(s.url); s.deleted = true; if (s.id != null) dbDelete(s.id); });
-    delete slidesBy[c.id]; delete curBy[c.id];
+    ["q", "w"].forEach(function (cx) {
+      var k = skey(c.id, cx);
+      (slidesBy[k] || []).forEach(function (s) { if (s.url) URL.revokeObjectURL(s.url); s.deleted = true; if (s.id != null) dbDelete(s.id); });
+      delete slidesBy[k]; delete curBy[k];
+    });
     classes.splice(idx, 1);
     activeId = classes[Math.max(0, idx - 1)].id;
     snapshot = null;
@@ -1814,10 +1820,19 @@
   $("tStart").addEventListener("click", startPause);
   $("tReset").addEventListener("click", resetTimer);
 
-  /* ================= screenshots (one queue per class) ================= */
+  /* ================= screenshots and text slides (two queues per class) ================= */
+  /* The Question page ("q") and Work time ("w") each keep their own queue, so a big question picture never
+     sits over the scene. A queue holds pictures ({url}) and text slides ({kind: "text", text}). */
   var slidesBy = {}, curBy = {}, slides = [], cur = 0, db = null;
-  function slidesFor(cid) { return slidesBy[cid] || (slidesBy[cid] = []); }
-  function useSlidesFor(cid) { slides = slidesFor(cid); cur = curBy[cid] || 0; }
+  function qctx() { return isScene() ? "w" : "q"; }
+  function skey(cid, cx) { return (cid || activeId) + "|" + (cx || qctx()); }
+  function slidesFor(k) { return slidesBy[k] || (slidesBy[k] = []); }
+  function useSlidesFor(k) { slides = slidesFor(k); cur = curBy[k] || 0; }
+  function curSlide() { return slides.length ? slides[Math.max(0, Math.min(cur, slides.length - 1))] : null; }
+  function curIsImg() { var s0 = curSlide(); return !!(s0 && s0.url); }
+  function ctxNoteKey() { return qctx() === "w" ? "wnote" : "note"; }
+  // The text box shows the current text slide's own text, otherwise the page's text (a caption over pictures).
+  function curText() { var s0 = curSlide(); return s0 && s0.kind === "text" ? s0.text || "" : C()[ctxNoteKey()] || ""; }
   function openDB() {
     return new Promise(function (res) {
       try {
@@ -1829,12 +1844,25 @@
     });
   }
   // Store raw bytes (not a Blob) and never let storage block the screen.
-  function dbPut(file, cid) {
+  function dbPutText(sl) {
+    if (!db) return;
+    try {
+      var req = db.transaction("slides", "readwrite").objectStore("slides").add({ kind: "text", text: sl.text || "", cid: sl.cid, ctx: sl.ctx });
+      req.onsuccess = function () { if (sl.deleted) { dbDelete(req.result); return; } sl.id = req.result; if (sl.dirty) dbSaveText(sl); };
+    } catch (e) {}
+  }
+  function dbSaveText(sl) {
+    sl.dirty = true;
+    if (sl.id == null) return;
+    clearTimeout(sl.t); sl.t = setTimeout(function () { sl.dirty = false; dbUpdate({ id: sl.id, kind: "text", text: sl.text || "", cid: sl.cid, ctx: sl.ctx }); }, 400);
+  }
+  function newTextSlide(text, cid, cx) { var sl = { id: null, url: null, kind: "text", text: text || "", cid: cid, ctx: cx }; dbPutText(sl); return sl; }
+  function dbPut(file, cid, cx) {
     var work = new Promise(function (res) {
       if (!db || !file.arrayBuffer) return res(null);
       file.arrayBuffer().then(function (buf) {
         try {
-          var req = db.transaction("slides", "readwrite").objectStore("slides").add({ buf: buf, type: file.type, cid: cid });
+          var req = db.transaction("slides", "readwrite").objectStore("slides").add({ buf: buf, type: file.type, cid: cid, ctx: cx || "q" });
           req.onsuccess = function () { res(req.result); };
           req.onerror = function () { res(null); };
         } catch (e) { res(null); }
@@ -1845,11 +1873,11 @@
   }
   function dbUpdate(row) { try { if (db) db.transaction("slides", "readwrite").objectStore("slides").put(row); } catch (e) {} }
   function dbDelete(id) { try { if (db) db.transaction("slides", "readwrite").objectStore("slides").delete(id); } catch (e) {} }
-  function dbClearClass(cid) {
+  function dbClearClass(cid, cx) {
     try {
       if (!db) return;
       var store = db.transaction("slides", "readwrite").objectStore("slides"), req = store.openCursor();
-      req.onsuccess = function () { var cu = req.result; if (cu) { if (cu.value.cid === cid) cu.delete(); cu.continue(); } };
+      req.onsuccess = function () { var cu = req.result; if (cu) { if (cu.value.cid === cid && (!cx || (cu.value.ctx || "q") === cx)) cu.delete(); cu.continue(); } };
     } catch (e) {}
   }
   function dbLoad() {
@@ -1870,11 +1898,11 @@
   function addFiles(files) {
     var imgs = Array.prototype.filter.call(files, function (f) { return f && f.type && f.type.indexOf("image/") === 0; });
     if (!imgs.length) return;
-    var cid = activeId, arr = slidesFor(cid), firstNew = arr.length;
+    var cid = activeId, cx = qctx(), arr = slidesFor(skey(cid, cx)), firstNew = arr.length;
     imgs.forEach(function (f) {
       var s = { id: null, url: URL.createObjectURL(f) };
       arr.push(s);
-      dbPut(f, cid).then(function (id) { if (id == null) return; if (s.deleted) dbDelete(id); else s.id = id; });
+      dbPut(f, cid, cx).then(function (id) { if (id == null) return; if (s.deleted) dbDelete(id); else s.id = id; });
     });
     cur = firstNew;
     renderSlides();
@@ -1892,15 +1920,27 @@
       Promise.all(jobs).then(addFiles);
     }, function () { toast("Browser blocked the button. Press Ctrl + V instead"); });
   }
+  function addText() {
+    var cid = activeId, cx = qctx(), arr = slides, k = ctxNoteKey(), c = C();
+    // the page's own text becomes slide 1, so nothing typed so far is lost
+    if (!arr.length && (c[k] || "").trim()) { arr.push(newTextSlide(c[k], cid, cx)); c[k] = ""; save(); }
+    arr.push(newTextSlide("", cid, cx));
+    cur = arr.length - 1;
+    if (ink.on) setInk(false);
+    renderSlides();
+    note.focus();   // straight away, so the first key typed goes into the slide (not to the shortcuts or the button)
+    toast("Text slide " + arr.length + " added. Type your question");
+  }
   function renderSlides() {
     var img = $("slideImg"), has = slides.length > 0;
-    $("empty").hidden = has; img.hidden = !has; $("bar").hidden = !has;
+    if (has) { cur = Math.max(0, Math.min(cur, slides.length - 1)); curBy[skey()] = cur; }
+    var isImg = curIsImg();
+    var t = curText(); if (note.value !== t) note.value = t;
+    $("empty").hidden = has; img.hidden = !isImg; $("bar").hidden = !has;
     applyLayout();
     var th = $("thumbs"); th.innerHTML = "";
     if (!has) { img.removeAttribute("src"); return; }
-    cur = Math.max(0, Math.min(cur, slides.length - 1));
-    curBy[activeId] = cur;
-    img.src = slides[cur].url;
+    if (isImg) img.src = slides[cur].url; else img.removeAttribute("src");
     $("slideCount").textContent = (cur + 1) + " / " + slides.length;
     $("prevSlide").disabled = cur === 0;
     $("nextSlide").disabled = cur === slides.length - 1;
@@ -1909,7 +1949,7 @@
       b.type = "button"; b.className = i === cur ? "on" : "";
       b.setAttribute("aria-label", "Question " + (i + 1));
       b.innerHTML = '<img alt=""><span>' + (i + 1) + "</span>";
-      b.querySelector("img").src = sl.url;
+      if (sl.url) b.querySelector("img").src = sl.url;
       b.addEventListener("click", function () { cur = i; renderSlides(); });
       th.appendChild(b);
     });
@@ -1919,13 +1959,13 @@
   function deleteSlide() {
     if (!slides.length) return;
     var s = slides.splice(cur, 1)[0];
-    URL.revokeObjectURL(s.url); s.deleted = true; if (s.id != null) dbDelete(s.id);
+    if (s.url) URL.revokeObjectURL(s.url); s.deleted = true; if (s.id != null) dbDelete(s.id);
     renderSlides();
   }
   function clearSlides() {
-    var cid = activeId;
-    slides.forEach(function (s) { URL.revokeObjectURL(s.url); s.deleted = true; });
-    slides.length = 0; cur = 0; curBy[cid] = 0; dbClearClass(cid); renderSlides();
+    var cid = activeId, cx = qctx();
+    slides.forEach(function (s) { if (s.url) URL.revokeObjectURL(s.url); s.deleted = true; });
+    slides.length = 0; cur = 0; curBy[skey(cid, cx)] = 0; dbClearClass(cid, cx); renderSlides();
   }
   document.addEventListener("paste", function (e) {
     var items = (e.clipboardData && e.clipboardData.items) || [], files = [];
@@ -1938,6 +1978,7 @@
   stage.addEventListener("drop", function (e) { e.preventDefault(); stage.classList.remove("drag"); addFiles(e.dataTransfer.files); });
   $("pasteBtn").addEventListener("click", pasteFromClipboard);
   $("fileBtn").addEventListener("click", function () { $("fileInput").click(); });
+  $("textBtn").addEventListener("click", addText);
   $("fileInput").addEventListener("change", function (e) { addFiles(e.target.files); e.target.value = ""; });
   $("prevSlide").addEventListener("click", function () { go(-1); });
   $("nextSlide").addEventListener("click", function () { go(1); });
@@ -1990,7 +2031,10 @@
   function backupText() {
     return JSON.stringify({
       app: "whosup", v: 3,
-      classes: classes.map(function (c) { return { name: c.name, n: c.n, labels: c.labels, members: c.members, orig: c.orig, note: c.note, ab: c.ab }; })
+      classes: classes.map(function (c) {
+        function texts(cx) { return (slidesBy[skey(c.id, cx)] || []).filter(function (sl) { return sl.kind === "text"; }).map(function (sl) { return sl.text || ""; }); }
+        return { name: c.name, n: c.n, labels: c.labels, members: c.members, orig: c.orig, note: c.note, wnote: c.wnote, ab: c.ab, texts: { q: texts("q"), w: texts("w") } };
+      })
     }, null, 1);
   }
   function importBackup(text) {
@@ -2000,8 +2044,11 @@
     var added = 0;
     arr.slice(0, 30).forEach(function (x) {
       if (!x || typeof x !== "object") return;
-      var c = sanitizeClass({ name: x.name, n: x.n, labels: x.labels, members: x.members, orig: x.orig, note: x.note, ab: x.ab });
+      var c = sanitizeClass({ name: x.name, n: x.n, labels: x.labels, members: x.members, orig: x.orig, note: x.note, wnote: x.wnote, ab: x.ab });
       c.id = uid(); pruneHistory(c); classes.push(c); added++;
+      if (x.texts && typeof x.texts === "object") ["q", "w"].forEach(function (cx) {
+        if (Array.isArray(x.texts[cx])) x.texts[cx].slice(0, 100).forEach(function (t) { if (typeof t === "string") slidesFor(skey(c.id, cx)).push(newTextSlide(t.slice(0, 5000), c.id, cx)); });
+      });
     });
     if (!added) { toast("No classes found in that backup"); return; }
     renderTabs(); refresh(); save();
@@ -2063,14 +2110,15 @@
     if (VIEWS[v].scene) st.sceneView = v;
     var was = view();
     st.view = v; save();
-    applyLayout();
+    if (!!VIEWS[was].scene !== !!VIEWS[v].scene) { if (ink.on) setInk(false); useSlidesFor(skey()); renderSlides(); }   // Work time has its own question queue
+    else applyLayout();
     if (VIEWS[v].scene) { if (VIEWS[v].preset) nsUsePreset(VIEWS[v].preset); nsEnterScene(byUser); }
     else if (VIEWS[was].scene) nsLeaveScene();
   }
   function toggleVis(k) { var o = vis(); o[k] = !o[k]; save(); applyLayout(); }
   function applyLayout() {
     var m = $("main"), o = vis(), v = view(), sc = VIEWS[v].scene;
-    var hasImg = typeof slides !== "undefined" && slides && slides.length > 0;
+    var hasImg = typeof slides !== "undefined" && curIsImg();
     m.classList.toggle("scene-mode", sc);
     m.classList.toggle("show-q", o.q); m.classList.toggle("show-n", o.n); m.classList.toggle("show-t", o.t);
     m.dataset.layout = (o.q ? "q" : "") + (o.n ? "n" : "") + (o.t ? "t" : "") || "none";
@@ -2176,7 +2224,12 @@
   function queueFitNames() { if (!fitNamesQ) fitNamesQ = requestAnimationFrame(function () { fitNamesQ = 0; fitNames(); }); }
   if (window.MutationObserver) new MutationObserver(queueFitNames).observe($("names"), { subtree: true, childList: true, characterData: true });
   if (window.ResizeObserver) new ResizeObserver(queueFitNames).observe($("names"));
-  note.addEventListener("input", function () { C().note = note.value; save(); fitNote(); });
+  note.addEventListener("input", function () {
+    var s0 = curSlide();
+    if (s0 && s0.kind === "text") { s0.text = note.value; dbSaveText(s0); }
+    else { C()[ctxNoteKey()] = note.value; save(); }
+    fitNote();
+  });
   $("qBig").addEventListener("click", function () { noteSizeBy(1.15); });
   $("qSmall").addEventListener("click", function () { noteSizeBy(1 / 1.15); });
   $("qAuto").addEventListener("click", noteSizeAuto);
@@ -2191,7 +2244,7 @@
   var inkCv = $("ink"), inkCx = inkCv.getContext("2d");
   function inkList() {
     if (slides && slides.length) { var s = slides[cur]; return s.ink || (s.ink = []); }
-    return ink.byClass[activeId] || (ink.byClass[activeId] = []);
+    var k = skey(); return ink.byClass[k] || (ink.byClass[k] = []);
   }
   function sizeInk() {
     var r = $("stage").getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
@@ -2304,7 +2357,8 @@
   var ns = {
     on: false, manual: false, paused: false, stream: null, ctx: null, src: null, an: null, buf: null, raf: 0,
     lastT: 0, level: 0, loudMs: 0, quietMs: 0, runMs: 0, arriveMs: 0, gapMs: 0, calmMs: 0, manualMs: 0, state: "calm",
-    inst: [], uid: 0, cid: null, session: 0, calib: null, uiTick: 0, wasRunning: false, resetArm: 0, err: ""
+    inst: [], uid: 0, cid: null, session: 0, calib: null, uiTick: 0, wasRunning: false, resetArm: 0, err: "",
+    tick: 0, hist: [], histMs: 0, floor: 0, learnMs: 0
   };
   var sceneEl = $("scene");
 
@@ -2314,6 +2368,17 @@
     p = p || nsPreset();
     var v = st.noiseLines && typeof st.noiseLines === "object" ? +st.noiseLines[p] : NaN;
     return isFinite(v) && v > 0 ? Math.max(5, Math.min(95, v)) : NS_PRESETS[p].def;
+  }
+  // The room's background hum (aircon, fans) is learnt while listening: the quietest 10% of the last 90 s.
+  // The line used for scaring is never below that hum + 10, so a steady fan can't keep the animals away.
+  function nsFloorOn() { return !ns.manual && ns.hist.length >= 24; }
+  function nsLineEff() { var l = nsLine(); return nsFloorOn() ? Math.max(l, Math.min(85, Math.round(ns.floor + 10))) : l; }
+  function nsTrackFloor(dt) {
+    ns.histMs += dt;
+    if (ns.histMs < 250) return;
+    ns.histMs = 0; ns.hist.push(ns.level); if (ns.hist.length > 360) ns.hist.shift();
+    var s = ns.hist.slice().sort(function (a, b) { return a - b; });
+    ns.floor = s[Math.floor(s.length * 0.1)] || 0;
   }
   function nsSetLine(v) {
     if (!st.noiseLines || typeof st.noiseLines !== "object") st.noiseLines = {};
@@ -2495,8 +2560,11 @@
     if (n === "NotReadableError") return "Another app is using the microphone. Close it and press Start listening again.";
     return "The microphone could not start (" + (n || "unknown error") + "). You're in tap mode.";
   }
-  function nsStartLoop() { ns.lastT = performance.now(); cancelAnimationFrame(ns.raf); ns.raf = requestAnimationFrame(nsFrame); }
-  function nsResetCounters() { ns.loudMs = ns.quietMs = ns.runMs = 0; ns.state = "calm"; sceneEl.classList.remove("frozen"); if (!ns.gapMs) { ns.gapMs = nsGap(true); ns.arriveMs = 0; } }
+  // A timer, not requestAnimationFrame: browsers stop animation frames when the window is covered or minimised,
+  // which froze the animal clock. Timers keep running (about once a second at worst), and dt follows real time.
+  function nsStartLoop() { ns.lastT = performance.now(); clearInterval(ns.tick); ns.tick = setInterval(function () { nsFrame(performance.now()); }, 100); }
+  // Every start of listening (entering Work time, resuming, reopening the page) gets a quick first animal (10–20 s).
+  function nsResetCounters() { ns.loudMs = ns.quietMs = ns.runMs = 0; ns.state = "calm"; sceneEl.classList.remove("frozen"); ns.gapMs = nsGap(true); ns.arriveMs = 0; ns.learnMs = 8000; ns.hist = []; ns.histMs = 0; ns.floor = 0; }
   function nsStartMic() {
     ns.err = "";
     if (ns.cid !== activeId) { nsClearAll(); ns.cid = activeId; ns.gapMs = 0; ns.session = 0; ns.calmMs = 0; }
@@ -2529,7 +2597,7 @@
     nsResetCounters(); nsRenderListen(); nsStartLoop();
   }
   function nsStopMic() {
-    cancelAnimationFrame(ns.raf); ns.raf = 0;
+    clearInterval(ns.tick); ns.tick = 0;
     try { if (ns.src) ns.src.disconnect(); } catch (e) {}
     if (ns.stream) ns.stream.getTracks().forEach(function (t) { t.stop(); });
     ns.stream = ns.src = ns.an = null; ns.on = false; ns.level = 0; ns.calib = null;
@@ -2548,15 +2616,17 @@
   }
   function nsFrame(now) {
     if (!ns.on) return;
-    var dt = Math.max(0, Math.min(100, now - ns.lastT)); ns.lastT = now;
-    var over = false;
+    var dt = Math.max(0, Math.min(1500, now - ns.lastT)); ns.lastT = now;
+    var over = false, line = nsLine();
     if (!ns.manual && ns.an) {
-      ns.an.getFloatTimeDomainData(ns.buf);
+      try { ns.an.getFloatTimeDomainData(ns.buf); } catch (e) {}
       var sum = 0; for (var i = 0; i < ns.buf.length; i++) sum += ns.buf[i] * ns.buf[i];
       var db = 20 * Math.log10(Math.sqrt(sum / ns.buf.length) + 1e-8);
       var pct = Math.max(0, Math.min(100, (db + 70) / 60 * 100));
       ns.level += (pct - ns.level) * (1 - Math.exp(-dt / 250));
-      over = ns.level > nsLine();
+      nsTrackFloor(dt);
+      line = nsLineEff();
+      over = ns.level > line;
       if (ns.calib) {
         ns.calib.samples.push(ns.level);
         $("nsCalMsg").textContent = "Listening… " + Math.max(0, Math.ceil((5000 - (now - ns.calib.t0)) / 1000)) + " s";
@@ -2570,18 +2640,22 @@
     } else if (ns.manual) {
       over = ns.manualMs > 0; ns.manualMs = Math.max(0, ns.manualMs - dt);
     }
+    var heard = over;   // what the mic hears right now, even while still learning
+    if (ns.learnMs > 0) { ns.learnMs -= dt; if (!ns.manual) over = false; }   // first 8 s: learning the room's hum, no scares
     if (!ns.paused) {
       if (ns.state === "calm") {
-        if (over) { ns.loudMs += dt * (!ns.manual && ns.level > nsLine() + 15 ? 6 : 1); if (ns.loudMs >= (ns.manual ? 0 : 6000)) nsScare(); }
-        else {
-          ns.loudMs = Math.max(0, ns.loudMs - dt * 2);
-          ns.arriveMs += dt; ns.calmMs += dt;
-          if (ns.arriveMs >= ns.gapMs) { ns.arriveMs = 0; ns.gapMs = nsGap(false); nsArrive(); }
-        }
+        // the arrival clock runs the whole time the scene is calm; only a real scare stops it
+        // (it used to pause on every loud moment, so a room hovering near the line never got an animal)
+        ns.arriveMs += dt;
+        if (over) { ns.loudMs += dt * (!ns.manual && ns.level > line + 15 ? 6 : 1); if (ns.loudMs >= (ns.manual ? 0 : 6000)) nsScare(); }
+        else { ns.loudMs = Math.max(0, ns.loudMs - dt * 2); ns.calmMs += dt; }
+        // an animal that is due waits for a quiet moment
+        if (ns.state === "calm" && !heard && ns.arriveMs >= ns.gapMs) { ns.arriveMs = 0; ns.gapMs = nsGap(false); nsArrive(); }
       } else {
+        // about 3 s of mostly-quiet clears a scare: a short noise sets the count back instead of restarting it
         if (!over) { ns.quietMs += dt; ns.runMs = 0; if (ns.quietMs >= 3000) nsCalm(); }
         else {
-          ns.quietMs = 0;
+          ns.quietMs = Math.max(0, ns.quietMs - dt * 0.5);
           if (st.noiseLoud !== "pause") {
             ns.runMs += dt;
             if (ns.runMs >= 5000) { ns.runMs = 0; nsRunOne(); }
@@ -2590,7 +2664,6 @@
       }
     }
     nsRenderMeter();
-    ns.raf = requestAnimationFrame(nsFrame);
   }
   function nsRunOne() { var o = out(); if (o.length) nsLeave(o[Math.floor(Math.random() * o.length)]); }
   function nsScare() {
@@ -2616,7 +2689,7 @@
 
   /* ----- rendering the noise UI ----- */
   function nsRenderMeter() {
-    var line = nsLine(), lv = ns.level, cls = lv > line ? "loud" : lv > line * 0.8 ? "warn" : "";
+    var line = nsLineEff(), lv = ns.level, cls = ns.learnMs > 0 && !ns.manual ? "" : lv > line ? "loud" : lv > line * 0.8 ? "warn" : "";
     ["nsFill", "nsFill2"].forEach(function (id) { var f = $(id); f.style.width = lv.toFixed(1) + "%"; f.className = "ns-fill " + cls; });
     $("nsLineMk").style.left = line + "%"; $("nsLineMk2").style.left = line + "%";
     var L = $("listen"), live = ns.on && !ns.paused;
@@ -2627,7 +2700,7 @@
     else if (!ns.on) msg = "Not listening";
     else if (ns.state === "scared") msg = st.noiseLoud === "pause" ? "Too loud! Animals are holding still" : "Too loud! Animals are hiding";
     else if (!ns.manual && cls === "loud") msg = "Getting loud…";
-    else msg = ns.manual ? "Tap mode" : "Listening";
+    else msg = ns.manual ? "Tap mode" : ns.learnMs > 0 ? "Listening (getting used to the room)" : "Listening";
     $("lStatus").textContent = msg;
     if (ns.on && !ns.paused && ns.state !== "scared") $("lStatus").insertAdjacentHTML("beforeend", '<span class="l-act"> · ' + NS_PRESETS[nsPreset()].label + "</span>");
     $("lPct").textContent = live && !ns.manual ? Math.round(lv) + "% / " + line + "%" : out().length + " out";
@@ -2653,7 +2726,8 @@
     });
     var line = nsLine();
     $("nsLine").value = line;
-    $("nsLineHelp").textContent = NS_PRESETS[nsPreset()].label + ": animals come out while the room stays left of the line (" + line + "%). Lower is stricter.";
+    $("nsLineHelp").textContent = NS_PRESETS[nsPreset()].label + ": animals come out while the room stays left of the line (" + line + "%). Lower is stricter." +
+      (nsLineEff() > line ? " The room's background hum (fans, aircon) is about " + Math.round(ns.floor) + "%, so the board is using " + nsLineEff() + "% for now." : "");
     $("nsShowMeter").checked = !!st.noiseMeter;
     $("nsChime").checked = !!st.noiseChime;
     $("nsEvery").value = nsEvery();
@@ -3038,10 +3112,12 @@
       var cid = r.cid;
       if (!cid) { cid = ids.indexOf(legacyCid) >= 0 ? legacyCid : ids[0]; r.cid = cid; dbUpdate(r); }
       if (ids.indexOf(cid) < 0) return;
+      var cx = r.ctx === "w" ? "w" : "q", k = skey(cid, cx);   // older pictures (no ctx) belong to the Question page
+      if (r.kind === "text") { (by[k] = by[k] || []).push({ id: r.id, url: null, kind: "text", text: typeof r.text === "string" ? r.text : "", cid: cid, ctx: cx }); return; }
       var blob = r.blob || (r.buf ? new Blob([r.buf], { type: r.type || "image/png" }) : null);
-      if (blob) (by[cid] = by[cid] || []).push({ id: r.id, url: URL.createObjectURL(blob) });
+      if (blob) (by[k] = by[k] || []).push({ id: r.id, url: URL.createObjectURL(blob) });
     });
-    Object.keys(by).forEach(function (cid) { var arr = slidesFor(cid); Array.prototype.unshift.apply(arr, by[cid]); });
+    Object.keys(by).forEach(function (k) { var arr = slidesFor(k); Array.prototype.unshift.apply(arr, by[k]); });
     renderSlides();
   });
   if (clearedOnLoad) toast("Yesterday's absences were cleared");
@@ -3050,5 +3126,3 @@
 </script>
 </body>
 </html>
-
-</body></html>

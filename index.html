@@ -1922,8 +1922,8 @@
   function curSlide() { return slides.length ? slides[Math.max(0, Math.min(cur, slides.length - 1))] : null; }
   function curIsImg() { var s0 = curSlide(); return !!(s0 && s0.url); }
   function ctxNoteKey() { return qctx() === "w" ? "wnote" : "note"; }
-  // The text box shows the current text slide's own text, otherwise the page's text (a caption over pictures).
-  function curText() { var s0 = curSlide(); return s0 && s0.kind === "text" ? s0.text || "" : C()[ctxNoteKey()] || ""; }
+  // Every slide keeps its own text (and, optionally, its own picture). The page note is only a draft used while there are no slides yet.
+  function curText() { var s0 = curSlide(); return s0 ? s0.text || "" : C()[ctxNoteKey()] || ""; }
   function openDB() {
     return new Promise(function (res) {
       try {
@@ -1939,21 +1939,31 @@
     if (!db) return;
     try {
       var req = db.transaction("slides", "readwrite").objectStore("slides").add({ kind: "text", text: sl.text || "", cid: sl.cid, ctx: sl.ctx });
-      req.onsuccess = function () { if (sl.deleted) { dbDelete(req.result); return; } sl.id = req.result; if (sl.dirty) dbSaveText(sl); };
+      req.onsuccess = function () { if (sl.deleted || sl.url) { dbDelete(req.result); return; } sl.id = req.result; if (sl.dirty) dbSaveText(sl); };
     } catch (e) {}
   }
+  // Saves a slide's text into its own row. The row is read first so a picture row keeps its picture.
   function dbSaveText(sl) {
     sl.dirty = true;
     if (sl.id == null) return;
-    clearTimeout(sl.t); sl.t = setTimeout(function () { sl.dirty = false; dbUpdate({ id: sl.id, kind: "text", text: sl.text || "", cid: sl.cid, ctx: sl.ctx }); }, 400);
+    clearTimeout(sl.t);
+    sl.t = setTimeout(function () {
+      if (sl.deleted || !db) { sl.dirty = false; return; }
+      if (sl.id == null) return;
+      sl.dirty = false;
+      try {
+        var store = db.transaction("slides", "readwrite").objectStore("slides"), g = store.get(sl.id);
+        g.onsuccess = function () { var row = g.result; if (row) { row.text = sl.text || ""; store.put(row); } };
+      } catch (e) {}
+    }, 400);
   }
   function newTextSlide(text, cid, cx) { var sl = { id: null, url: null, kind: "text", text: text || "", cid: cid, ctx: cx }; dbPutText(sl); return sl; }
-  function dbPut(file, cid, cx) {
+  function dbPut(file, cid, cx, text) {
     var work = new Promise(function (res) {
       if (!db || !file.arrayBuffer) return res(null);
       file.arrayBuffer().then(function (buf) {
         try {
-          var req = db.transaction("slides", "readwrite").objectStore("slides").add({ buf: buf, type: file.type, cid: cid, ctx: cx || "q" });
+          var req = db.transaction("slides", "readwrite").objectStore("slides").add({ buf: buf, type: file.type, cid: cid, ctx: cx || "q", text: text || "" });
           req.onsuccess = function () { res(req.result); };
           req.onerror = function () { res(null); };
         } catch (e) { res(null); }
@@ -1989,15 +1999,33 @@
   function addFiles(files) {
     var imgs = Array.prototype.filter.call(files, function (f) { return f && f.type && f.type.indexOf("image/") === 0; });
     if (!imgs.length) return;
-    var cid = activeId, cx = qctx(), arr = slidesFor(skey(cid, cx)), firstNew = arr.length;
-    imgs.forEach(function (f) {
-      var s = { id: null, url: URL.createObjectURL(f) };
+    var cid = activeId, cx = qctx(), k = ctxNoteKey(), c = C(), arr = slidesFor(skey(cid, cx)), firstNew = arr.length, carry = "", joined = null, nImgs = imgs.length;
+    var shown = arr === slides ? curSlide() : null;
+    if (shown && !shown.url) {
+      // the shown slide has text but no picture yet: the first picture joins it, so text and picture sit on one slide
+      joined = shown; firstNew = arr.indexOf(shown); attachPicture(shown, imgs.shift(), cid, cx);
+    } else if (!arr.length && (c[k] || "").trim()) {
+      // text typed before any slide existed goes with the first picture
+      carry = c[k]; c[k] = ""; save();
+    }
+    imgs.forEach(function (f, i) {
+      var s = { id: null, url: URL.createObjectURL(f), text: i === 0 ? carry : "" };
       arr.push(s);
-      dbPut(f, cid, cx).then(function (id) { if (id == null) return; if (s.deleted) dbDelete(id); else s.id = id; });
+      dbPut(f, cid, cx, s.text).then(function (id) { if (id == null) return; if (s.deleted) dbDelete(id); else { s.id = id; if (s.dirty) dbSaveText(s); } });
     });
     cur = firstNew;
     renderSlides();
-    toast(imgs.length > 1 ? imgs.length + " questions added (" + arr.length + " in queue)" : "Question " + arr.length + " added");
+    toast(joined && nImgs === 1 ? "Picture added to this slide" : nImgs > 1 ? nImgs + " pictures added (" + arr.length + " in queue)" : "Question " + arr.length + " added");
+  }
+  function attachPicture(s, f, cid, cx) {
+    var oldId = s.id;
+    s.url = URL.createObjectURL(f); s.kind = ""; s.id = null;
+    dbPut(f, cid, cx, s.text).then(function (id) {
+      if (id == null) { s.id = oldId; return; }
+      if (oldId != null) dbDelete(oldId);
+      if (s.deleted) { dbDelete(id); return; }
+      s.id = id; if (s.dirty) dbSaveText(s);
+    });
   }
   function pasteFromClipboard() {
     if (!navigator.clipboard || !navigator.clipboard.read) { toast("Press Ctrl + V to paste"); return; }
@@ -2317,7 +2345,7 @@
   if (window.ResizeObserver) new ResizeObserver(queueFitNames).observe($("names"));
   note.addEventListener("input", function () {
     var s0 = curSlide();
-    if (s0 && s0.kind === "text") { s0.text = note.value; dbSaveText(s0); }
+    if (s0) { s0.text = note.value; dbSaveText(s0); }
     else { C()[ctxNoteKey()] = note.value; save(); }
     fitNote();
   });
@@ -3216,9 +3244,19 @@
       var cx = r.ctx === "w" ? "w" : "q", k = skey(cid, cx);   // older pictures (no ctx) belong to the Question page
       if (r.kind === "text") { (by[k] = by[k] || []).push({ id: r.id, url: null, kind: "text", text: typeof r.text === "string" ? r.text : "", cid: cid, ctx: cx }); return; }
       var blob = r.blob || (r.buf ? new Blob([r.buf], { type: r.type || "image/png" }) : null);
-      if (blob) (by[k] = by[k] || []).push({ id: r.id, url: URL.createObjectURL(blob) });
+      if (blob) (by[k] = by[k] || []).push({ id: r.id, url: URL.createObjectURL(blob), text: typeof r.text === "string" ? r.text : "" });
     });
     Object.keys(by).forEach(function (k) { var arr = slidesFor(k); Array.prototype.unshift.apply(arr, by[k]); });
+    // older saves kept one page-wide note shown over every picture: give it to the first slide that has no text, so it no longer follows the others
+    classes.forEach(function (c) {
+      ["q", "w"].forEach(function (cx) {
+        var nk = cx === "w" ? "wnote" : "note", arr = slidesFor(skey(c.id, cx));
+        if (!(c[nk] || "").trim() || !arr.length) return;
+        var first = null; arr.forEach(function (sl) { if (!first && !(sl.text || "").trim()) first = sl; });
+        if (!first) return;
+        first.text = c[nk]; c[nk] = ""; dbSaveText(first); save();
+      });
+    });
     renderSlides();
   });
   if (clearedOnLoad) toast("Yesterday's absences were cleared");

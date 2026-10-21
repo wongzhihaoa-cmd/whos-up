@@ -194,6 +194,9 @@
   .view { display: none; flex: 1; min-height: 0; align-items: center; justify-content: center; }
   .qcard.has-img .view { display: flex; }
   #slideImg { width: 100%; height: 100%; object-fit: contain; padding: 4px; display: block; }
+  /* YouTube slide: fills the same space as a picture. The card tools sit in a row under it (not floating over it), so they never cover the player's own controls */
+  #slideVid { width: calc(100% - 8px); height: calc(100% - 8px); margin: 4px; border: 0; border-radius: 10px; background: #000; display: block; }
+  #ytOpen { font-size: .82rem; font-weight: 600; color: var(--ink-soft); text-decoration: underline; white-space: nowrap; padding: 0 4px; }
   #ink { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; touch-action: none; }
   .qcard.drawing #ink { pointer-events: auto; cursor: crosshair; }
   .qcard.drawing #note { pointer-events: none; }
@@ -233,6 +236,12 @@
   .stage-area.scene-mode .qtools .empty-hint { display: none; }
   /* the floating tools wrap onto a second row instead of spilling past a narrow card */
   .qcard.has-img .qtools, .stage-area.scene-mode .qtools { width: max-content; max-width: calc(100% - 16px); flex-wrap: wrap; white-space: normal; border-radius: 18px; }
+  /* A video slide: the tools sit in normal flow under the player, wrapping onto a second row if the card is narrow (the player shrinks to fit).
+     Hovering the player does not count as hovering the card (it is another page), so they are always shown, and fade only when nothing has moved for 4 s. */
+  .stage-area .qcard.has-vid .qtools { position: static; transform: none; width: auto; max-width: none; border-radius: 0; background: none; box-shadow: none; padding: 6px 10px 8px; flex-wrap: wrap; white-space: normal; opacity: 1; pointer-events: auto; }
+  body.idle .stage-area .qcard.has-vid .qtools { opacity: 0; }
+  /* phones: a video slide keeps only prev / next, Open on YouTube, Remove and + Text, so the tools stay on one row and the player keeps its height */
+  body.phone .qcard.has-vid .qtools .seg, body.phone .qcard.has-vid .qtools .sep, body.phone .qcard.has-vid #clearSlides, body.phone .qcard.has-vid #pasteBtn, body.phone .qcard.has-vid #fileBtn { display: none; }
 
   /* ---------- names ---------- */
   .names { flex-direction: column; gap: 10px; min-height: 0; }
@@ -719,7 +728,7 @@
     <section class="qcard glass" id="qcard" aria-label="Question">
       <div class="qbody" id="stage">
         <textarea id="note" spellcheck="false" placeholder="Type the question here…" aria-label="Question text"></textarea>
-        <div class="view" id="qview"><img id="slideImg" alt="Question screenshot" hidden></div>
+        <div class="view" id="qview"><img id="slideImg" alt="Question screenshot" hidden><iframe id="slideVid" title="YouTube video" hidden allow="fullscreen; picture-in-picture; encrypted-media" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>
         <canvas id="ink"></canvas>
       </div>
       <div class="qtools" id="qtools">
@@ -741,10 +750,11 @@
           <button id="prevSlide" type="button" aria-label="Previous question">&#8249;</button>
           <span class="count" id="slideCount">1 / 1</span>
           <button id="nextSlide" type="button" aria-label="Next question">&#8250;</button>
+          <a id="ytOpen" href="#" target="_blank" rel="noopener noreferrer" hidden title="Opens this video on YouTube in a new tab (use it if the school network blocks the player)">Open on YouTube</a>
           <button id="delSlide" type="button" aria-label="Remove this picture">Remove</button>
           <button id="clearSlides" type="button" aria-label="Remove all pictures">Clear all</button>
         </div>
-        <span class="empty-hint" id="empty">Paste a screenshot with <kbd>Ctrl</kbd>+<kbd>V</kbd> or drop images here</span>
+        <span class="empty-hint" id="empty">Paste a screenshot or a YouTube link with <kbd>Ctrl</kbd>+<kbd>V</kbd>, or drop images here</span>
         <button id="pasteBtn" type="button">Paste</button>
         <button id="fileBtn" type="button" title="Add one or more pictures to the queue">+ Picture</button>
         <button id="textBtn" type="button" title="Add a text-only question to the queue">+ Text</button>
@@ -956,7 +966,7 @@
     </section>
     <details class="more">
       <summary>Backup and restore</summary>
-      <p>Your classes are saved in this browser only. Back them up so a cleared browser or a new computer doesn't mean retyping every list. Backups hold class names, groups, names and typed questions (text slides too). Pictures are not included.</p>
+      <p>Your classes are saved in this browser only. Back them up so a cleared browser or a new computer doesn't mean retyping every list. Backups hold class names, groups, names and typed questions (text slides and YouTube links too). Pictures are not included.</p>
       <div class="row">
         <button id="bkCopy" type="button">Copy backup text</button>
         <button id="bkFileBtn" type="button">Restore from file…</button>
@@ -1921,6 +1931,7 @@
   function useSlidesFor(k) { slides = slidesFor(k); cur = curBy[k] || 0; }
   function curSlide() { return slides.length ? slides[Math.max(0, Math.min(cur, slides.length - 1))] : null; }
   function curIsImg() { var s0 = curSlide(); return !!(s0 && s0.url); }
+  function curIsVid() { var s0 = curSlide(); return !!(s0 && s0.yt && !s0.url); }
   function ctxNoteKey() { return qctx() === "w" ? "wnote" : "note"; }
   // Every slide keeps its own text (and, optionally, its own picture). The page note is only a draft used while there are no slides yet.
   function curText() { var s0 = curSlide(); return s0 ? s0.text || "" : C()[ctxNoteKey()] || ""; }
@@ -1938,7 +1949,7 @@
   function dbPutText(sl) {
     if (!db) return;
     try {
-      var req = db.transaction("slides", "readwrite").objectStore("slides").add({ kind: "text", text: sl.text || "", cid: sl.cid, ctx: sl.ctx });
+      var req = db.transaction("slides", "readwrite").objectStore("slides").add({ kind: sl.yt ? "video" : "text", text: sl.text || "", cid: sl.cid, ctx: sl.ctx, yt: sl.yt || "", start: sl.start || 0 });
       req.onsuccess = function () { if (sl.deleted || sl.url) { dbDelete(req.result); return; } sl.id = req.result; if (sl.dirty) dbSaveText(sl); };
     } catch (e) {}
   }
@@ -1953,7 +1964,13 @@
       sl.dirty = false;
       try {
         var store = db.transaction("slides", "readwrite").objectStore("slides"), g = store.get(sl.id);
-        g.onsuccess = function () { var row = g.result; if (row) { row.text = sl.text || ""; store.put(row); } };
+        g.onsuccess = function () {
+          var row = g.result; if (!row) return;
+          row.text = sl.text || "";
+          // a YouTube link added to a text-only slide turns its row into a video row
+          if (sl.yt && !row.buf && !row.blob && row.yt !== sl.yt) { row.kind = "video"; row.yt = sl.yt; row.start = sl.start || 0; }
+          store.put(row);
+        };
       } catch (e) {}
     }, 400);
   }
@@ -2001,7 +2018,7 @@
     if (!imgs.length) return;
     var cid = activeId, cx = qctx(), k = ctxNoteKey(), c = C(), arr = slidesFor(skey(cid, cx)), firstNew = arr.length, carry = "", joined = null, nImgs = imgs.length;
     var shown = arr === slides ? curSlide() : null;
-    if (shown && !shown.url) {
+    if (shown && !shown.url && !shown.yt) {
       // the shown slide has text but no picture yet: the first picture joins it, so text and picture sit on one slide
       joined = shown; firstNew = arr.indexOf(shown); attachPicture(shown, imgs.shift(), cid, cx);
     } else if (!arr.length && (c[k] || "").trim()) {
@@ -2027,16 +2044,81 @@
       s.id = id; if (s.dirty) dbSaveText(s);
     });
   }
+  /* ---- YouTube slides: a slide with {yt: "11-character id", start: seconds}. Nothing is contacted until such a slide is shown. ---- */
+  var YT_ORIGIN = "https://www.youtube-nocookie.com";
+  // "90", "90s", "1m30s", "1h2m3s" -> seconds
+  function ytSecs(t) {
+    t = String(t || "").trim().toLowerCase();
+    if (!t) return 0;
+    if (/^\d{1,6}$/.test(t)) return Math.min(+t, 359999);
+    var m = t.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/);
+    if (!m || !(m[1] || m[2] || m[3])) return 0;
+    return Math.min((+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + (+m[3] || 0), 359999);
+  }
+  // Returns {id, start} for a single YouTube link (watch, youtu.be, shorts, live, embed), otherwise null.
+  function ytParse(txt) {
+    txt = String(txt || "").trim();
+    if (!txt || txt.length > 400 || /\s/.test(txt)) return null;
+    var u; try { u = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(txt) ? txt : "https://" + txt); } catch (e) { return null; }
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    var h = u.hostname.toLowerCase().replace(/^www\.|^m\./, ""), id = "", p = u.pathname.split("/");
+    if (h === "youtu.be") id = p[1] || "";
+    else if (h === "youtube.com" || h === "music.youtube.com" || h === "youtube-nocookie.com") {
+      if (p[1] === "watch") id = u.searchParams.get("v") || "";
+      else if (p[1] === "embed" || p[1] === "shorts" || p[1] === "live" || p[1] === "v") id = p[2] || "";
+    } else return null;
+    if (!/^[A-Za-z0-9_-]{11}$/.test(id)) return null;
+    var hm = u.hash.match(/^#t=(.+)$/);
+    return { id: id, start: ytSecs(u.searchParams.get("t") || u.searchParams.get("start") || (hm ? hm[1] : "")) };
+  }
+  function ytSrc(sl) { return YT_ORIGIN + "/embed/" + sl.yt + "?rel=0&playsinline=1&enablejsapi=1" + (sl.start > 0 ? "&start=" + sl.start : ""); }
+  // Loads (or unloads) the player. Leaving a video slide unloads it, so sound never carries on behind another slide.
+  function setVid(sl) {
+    var v = $("slideVid"), a = $("ytOpen"), want = sl ? ytSrc(sl) : "";
+    a.hidden = !sl;
+    if (sl) a.href = "https://www.youtube.com/watch?v=" + sl.yt + (sl.start > 0 ? "&t=" + sl.start + "s" : "");
+    if (v.dataset.src === want) return;
+    v.dataset.src = want;
+    var to = want || "about:blank";
+    // location.replace keeps the page's Back button from stepping through the player's history
+    try { v.contentWindow.location.replace(to); } catch (e) { v.src = to; }
+  }
+  function pauseVid() {
+    var v = $("slideVid");
+    if (!v.dataset.src) return;
+    try { v.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', YT_ORIGIN); } catch (e) {}
+  }
+  function newVideoSlide(v, text, cid, cx) { var sl = { id: null, url: null, kind: "video", yt: v.id, start: v.start || 0, text: text || "", cid: cid, ctx: cx }; dbPutText(sl); return sl; }
+  function addVideo(v) {
+    var cid = activeId, cx = qctx(), k = ctxNoteKey(), c = C(), arr = slidesFor(skey(cid, cx)), shown = arr === slides ? curSlide() : null, joined = false;
+    if (shown && !shown.url && !shown.yt) {
+      // the shown slide is text only: the video joins it, so the question text stays above the video
+      shown.yt = v.id; shown.start = v.start || 0; shown.kind = "video"; joined = true; dbSaveText(shown);
+    } else {
+      var carry = "";
+      if (!arr.length && (c[k] || "").trim()) { carry = c[k]; c[k] = ""; save(); }
+      arr.push(newVideoSlide(v, carry, cid, cx));
+      cur = arr.length - 1;
+    }
+    if (ink.on) setInk(false);
+    renderSlides();
+    toast(joined ? "Video added to this slide" : "Video " + arr.length + " added. Press play when you are ready");
+  }
   function pasteFromClipboard() {
     if (!navigator.clipboard || !navigator.clipboard.read) { toast("Press Ctrl + V to paste"); return; }
     navigator.clipboard.read().then(function (items) {
-      var jobs = [];
+      var jobs = [], texts = [];
       items.forEach(function (it) {
         var type = it.types.filter(function (t) { return t.indexOf("image/") === 0; })[0];
         if (type) jobs.push(it.getType(type).then(function (b) { return new File([b], "paste", { type: type }); }));
+        else if (it.types.indexOf("text/plain") >= 0) texts.push(it.getType("text/plain").then(function (b) { return b.text(); }));
       });
-      if (!jobs.length) { toast("No image on the clipboard"); return; }
-      Promise.all(jobs).then(addFiles);
+      if (jobs.length) { Promise.all(jobs).then(addFiles); return; }
+      if (!texts.length) { toast("No image or YouTube link on the clipboard"); return; }
+      Promise.all(texts).then(function (list) {
+        var v = null; list.forEach(function (t) { if (!v) v = ytParse(t); });
+        if (v) addVideo(v); else toast("No image or YouTube link on the clipboard");
+      }, function () { toast("No image or YouTube link on the clipboard"); });
     }, function () { toast("Browser blocked the button. Press Ctrl + V instead"); });
   }
   function addText() {
@@ -2053,9 +2135,10 @@
   function renderSlides() {
     var img = $("slideImg"), has = slides.length > 0;
     if (has) { cur = Math.max(0, Math.min(cur, slides.length - 1)); curBy[skey()] = cur; }
-    var isImg = curIsImg();
+    var isImg = curIsImg(), isVid = curIsVid();
     var t = curText(); if (note.value !== t) note.value = t;
-    $("empty").hidden = has; img.hidden = !isImg; $("bar").hidden = !has;
+    $("empty").hidden = has; img.hidden = !isImg; $("slideVid").hidden = !isVid; $("bar").hidden = !has;
+    setVid(isVid ? slides[cur] : null);
     applyLayout();
     var th = $("thumbs"); th.innerHTML = "";
     if (!has) { img.removeAttribute("src"); return; }
@@ -2089,12 +2172,26 @@
   document.addEventListener("paste", function (e) {
     var items = (e.clipboardData && e.clipboardData.items) || [], files = [];
     for (var i = 0; i < items.length; i++) if (items[i].kind === "file" && items[i].type.indexOf("image/") === 0) files.push(items[i].getAsFile());
-    if (files.length) { e.preventDefault(); addFiles(files); }
+    if (files.length) { e.preventDefault(); addFiles(files); return; }
+    // a single YouTube link becomes a video slide (but not while typing in a names box, a label or the backup box)
+    var tx = ""; try { tx = e.clipboardData ? e.clipboardData.getData("text/plain") : ""; } catch (x) {}
+    var v = ytParse(tx);
+    if (!v) return;
+    var t = e.target, tag = t && t.tagName;
+    if (t && t !== note && (tag === "TEXTAREA" || tag === "INPUT" || t.isContentEditable)) return;
+    e.preventDefault(); addVideo(v);
   });
   var stage = $("stage");
   stage.addEventListener("dragover", function (e) { e.preventDefault(); stage.classList.add("drag"); });
   stage.addEventListener("dragleave", function () { stage.classList.remove("drag"); });
-  stage.addEventListener("drop", function (e) { e.preventDefault(); stage.classList.remove("drag"); addFiles(e.dataTransfer.files); });
+  stage.addEventListener("drop", function (e) {
+    e.preventDefault(); stage.classList.remove("drag");
+    var dt = e.dataTransfer, v = null;
+    if (dt && dt.files && dt.files.length) { addFiles(dt.files); return; }
+    // a link dragged from the address bar or another tab
+    try { v = ytParse(dt.getData("text/uri-list").split("\n")[0]) || ytParse(dt.getData("text/plain")); } catch (x) {}
+    if (v) addVideo(v);
+  });
   $("pasteBtn").addEventListener("click", pasteFromClipboard);
   $("fileBtn").addEventListener("click", function () { $("fileInput").click(); });
   $("textBtn").addEventListener("click", addText);
@@ -2152,7 +2249,8 @@
       app: "whosup", v: 3,
       classes: classes.map(function (c) {
         function texts(cx) { return (slidesBy[skey(c.id, cx)] || []).filter(function (sl) { return sl.kind === "text"; }).map(function (sl) { return sl.text || ""; }); }
-        return { name: c.name, n: c.n, labels: c.labels, members: c.members, orig: c.orig, note: c.note, wnote: c.wnote, ab: c.ab, texts: { q: texts("q"), w: texts("w") } };
+        function vids(cx) { return (slidesBy[skey(c.id, cx)] || []).filter(function (sl) { return sl.yt && !sl.url; }).map(function (sl) { return { yt: sl.yt, start: sl.start || 0, text: sl.text || "" }; }); }
+        return { name: c.name, n: c.n, labels: c.labels, members: c.members, orig: c.orig, note: c.note, wnote: c.wnote, ab: c.ab, texts: { q: texts("q"), w: texts("w") }, videos: { q: vids("q"), w: vids("w") } };
       })
     }, null, 1);
   }
@@ -2165,6 +2263,11 @@
       if (!x || typeof x !== "object") return;
       var c = sanitizeClass({ name: x.name, n: x.n, labels: x.labels, members: x.members, orig: x.orig, note: x.note, wnote: x.wnote, ab: x.ab });
       c.id = uid(); pruneHistory(c); classes.push(c); added++;
+      if (x.videos && typeof x.videos === "object") ["q", "w"].forEach(function (cx) {
+        if (Array.isArray(x.videos[cx])) x.videos[cx].slice(0, 100).forEach(function (r) {
+          if (r && typeof r === "object" && /^[A-Za-z0-9_-]{11}$/.test(r.yt)) slidesFor(skey(c.id, cx)).push(newVideoSlide({ id: r.yt, start: Math.max(0, Math.min(359999, Math.floor(+r.start) || 0)) }, typeof r.text === "string" ? r.text.slice(0, 5000) : "", c.id, cx));
+        });
+      });
       if (x.texts && typeof x.texts === "object") ["q", "w"].forEach(function (cx) {
         if (Array.isArray(x.texts[cx])) x.texts[cx].slice(0, 100).forEach(function (t) { if (typeof t === "string") slidesFor(skey(c.id, cx)).push(newTextSlide(t.slice(0, 5000), c.id, cx)); });
       });
@@ -2237,12 +2340,16 @@
   function toggleVis(k) { var o = vis(); o[k] = !o[k]; save(); applyLayout(); }
   function applyLayout() {
     var m = $("main"), o = vis(), v = view(), sc = VIEWS[v].scene;
-    var hasImg = typeof slides !== "undefined" && curIsImg();
+    var hasVid = typeof slides !== "undefined" && curIsVid();
+    var hasImg = typeof slides !== "undefined" && (curIsImg() || hasVid);
     m.classList.toggle("scene-mode", sc);
     m.classList.toggle("show-q", o.q); m.classList.toggle("show-n", o.n); m.classList.toggle("show-t", o.t);
     m.dataset.layout = (o.q ? "q" : "") + (o.n ? "n" : "") + (o.t ? "t" : "") || "none";
     $("scoresWrap").hidden = !o.s;
     $("qcard").classList.toggle("has-img", hasImg);
+    $("qcard").classList.toggle("has-vid", hasVid);
+    // the question card is hidden (for example in Names view): pause the video rather than let it play unseen
+    if (!o.q) pauseVid();
     Array.prototype.forEach.call(document.querySelectorAll("#modes button"), function (b) { b.setAttribute("aria-pressed", b.dataset.view === v || (b.dataset.view === "work" && !!VIEWS[v].scene)); });
     Array.prototype.forEach.call(document.querySelectorAll("#lKind button"), function (b) { b.setAttribute("aria-pressed", b.dataset.sv === v); });
     Array.prototype.forEach.call(document.querySelectorAll("#dock button"), function (b) { b.setAttribute("aria-pressed", !!o[b.dataset.k]); });
@@ -3242,6 +3349,10 @@
       if (!cid) { cid = ids.indexOf(legacyCid) >= 0 ? legacyCid : ids[0]; r.cid = cid; dbUpdate(r); }
       if (ids.indexOf(cid) < 0) return;
       var cx = r.ctx === "w" ? "w" : "q", k = skey(cid, cx);   // older pictures (no ctx) belong to the Question page
+      if (r.kind === "video") {
+        if (typeof r.yt === "string" && /^[A-Za-z0-9_-]{11}$/.test(r.yt)) (by[k] = by[k] || []).push({ id: r.id, url: null, kind: "video", yt: r.yt, start: Math.max(0, +r.start || 0), text: typeof r.text === "string" ? r.text : "", cid: cid, ctx: cx });
+        return;
+      }
       if (r.kind === "text") { (by[k] = by[k] || []).push({ id: r.id, url: null, kind: "text", text: typeof r.text === "string" ? r.text : "", cid: cid, ctx: cx }); return; }
       var blob = r.blob || (r.buf ? new Blob([r.buf], { type: r.type || "image/png" }) : null);
       if (blob) (by[k] = by[k] || []).push({ id: r.id, url: URL.createObjectURL(blob), text: typeof r.text === "string" ? r.text : "" });

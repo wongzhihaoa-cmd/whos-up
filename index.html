@@ -304,6 +304,10 @@
   .stage-area[data-layout="t"]:not(.scene-mode) .t-time { font-size: clamp(5rem, 20vw, 16rem); }
   .stage-area[data-layout="t"]:not(.scene-mode) .t-bar { width: min(900px, 90%); height: 10px; }
   .stage-area[data-layout="t"]:not(.scene-mode) .t-row button { font-size: 1rem; padding: 7px 16px; }
+  .t-custom { align-items: center; }
+  .t-custom input { width: 4.6em; font: inherit; font-size: .85rem; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 999px; text-align: center; background: #fff; color: var(--ink); }
+  .t-custom input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .stage-area[data-layout="t"]:not(.scene-mode) .t-custom input { font-size: 1rem; padding: 7px 12px; }
   .stage-area[data-layout="nt"]:not(.scene-mode) .timer { flex-direction: row; flex-wrap: wrap; align-items: center; padding: 8px 16px; gap: 8px 16px; }
   .stage-area[data-layout="nt"]:not(.scene-mode) .t-time { font-size: 2.4rem; }
   .stage-area[data-layout="nt"]:not(.scene-mode) .t-bar { flex: 1; min-width: 120px; }
@@ -509,9 +513,23 @@
   @keyframes nsBob { 50% { transform: translateY(6px) rotate(-2deg); } }
   .an.k-flutter .idle { transform-origin: 50% 50%; animation: nsFlutter 1.4s ease-in-out infinite; }
   @keyframes nsFlutter { 0%, 100% { transform: translate(0, 0) scaleX(1); } 25% { transform: translate(6px, -10px) scaleX(.7); } 50% { transform: translate(0, -4px) scaleX(1); } 75% { transform: translate(-6px, -12px) scaleX(.75); } }
-  .an.moving .idle { animation: nsStep .4s ease-in-out infinite; }
+  .an.moving .idle { animation: nsStep var(--gait, .4s) ease-in-out infinite; }
   @keyframes nsStep { 50% { transform: translateY(-6px) rotate(2deg); } }
+  @keyframes nsStepLow { 50% { transform: translateY(-1px) rotate(.4deg); } }
+  @keyframes nsWave { 50% { transform: translateY(1.5px) rotate(-.7deg) scale(1.01, .99); } }
+  @keyframes nsGlide { 25% { transform: translateY(-1.5px) rotate(.8deg); } 75% { transform: translateY(1.5px) rotate(-.8deg); } }
+  @keyframes nsRuffle { 20% { transform: scale(1.05, .95) rotate(-2deg); } 40% { transform: scale(.97, 1.04) rotate(2deg); } 60% { transform: scale(1.04, .96) rotate(-1.5deg); } 80% { transform: rotate(1deg); } }
+  @keyframes nsNod { 30% { transform: translateY(5px) rotate(3deg); } 60% { transform: translateY(0) rotate(-1deg); } }
+  @keyframes nsSwayLoop { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
   .an.k-fly.moving .idle, .an.k-flutter.moving .idle { animation: nsFlap .22s ease-in-out infinite; }
+  /* gaits while an animal wanders (the walk-in uses the plain step) */
+  .an.g-low.moving .idle { animation-name: nsStepLow; }
+  .an.g-wave.moving .idle, .an.k-swim.moving .idle, .an.k-float.moving .idle { animation: nsWave 3.2s ease-in-out infinite; }
+  .an.g-glide.moving .idle { animation: nsGlide 3.6s ease-in-out infinite; }
+  .an.ruffle .idle { animation: nsRuffle 1.3s ease-in-out 1; }
+  .an.nod .idle { animation: nsNod 1.3s ease-in-out 1; }
+  .an.sway .idle { animation: nsSwayLoop 5s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .an.ruffle .idle, .an.nod .idle, .an.sway .idle { animation: none; } }
   @keyframes nsFlap { 50% { transform: translateY(-7px) scaleY(.88); } }
   .an.hop .idle { animation: nsHop .9s ease-out 1; }
   @keyframes nsHop { 30% { transform: translateY(-18px); } 55% { transform: translateY(0); } 70% { transform: translateY(-6px); } }
@@ -794,6 +812,11 @@
         <button type="button" data-sec="300">5m</button>
         <button type="button" data-sec="600">10m</button>
         <button type="button" id="tPlus">+30s</button>
+      </div>
+      <div class="t-row t-custom" id="tCustom">
+        <input id="tIn" type="text" inputmode="decimal" autocomplete="off" placeholder="min" aria-label="Type a time: 7 for minutes, 7:30, or 45s">
+        <button type="button" id="tSet" title="Set the timer to the time you typed (Enter)">Set</button>
+        <button type="button" id="tAdd" title="Add the time you typed to the timer, even while it is running">+ Add</button>
       </div>
     </section>
     <div class="stage-empty glass">Everything is hidden in this mode. Use the buttons at the bottom to show something.</div>
@@ -1875,14 +1898,33 @@
   function stopTick() { tRunning = false; clearInterval(tInt); tInt = null; }
   function clearDone() { $("timer").classList.remove("done"); $("tLabel").textContent = ""; }
   function setTotal(sec) { stopTick(); clearDone(); st.timerTotal = sec; tRemain = sec * 1000; renderTimer(); save(); }
+  var T_MAX = 10800;
   function adjust(delta) {
     var total = st.timerTotal * 1000;
-    if (!tRunning && tRemain === total) { setTotal(Math.max(30, st.timerTotal + delta)); return; }
+    if (!tRunning && tRemain === total) { setTotal(Math.min(T_MAX, Math.max(30, st.timerTotal + delta))); return; }
+    var wasDone = !tRunning && tRemain <= 0;
     clearDone();
-    tRemain = Math.max(0, tRemain + delta * 1000);
+    tRemain = Math.min(T_MAX * 1000, Math.max(0, tRemain + delta * 1000));
     if (tRunning) tEnd = performance.now() + tRemain;
     if (tRemain > total) st.timerTotal = Math.ceil(tRemain / 1000);
     renderTimer(); save();
+    if (wasDone && tRemain > 0 && delta > 0) startPause();
+  }
+  /* typed time: 7 = 7 minutes, 7:30, 90s, 1.5 = 90 seconds */
+  function parseTime(txt) {
+    txt = String(txt || "").trim().toLowerCase();
+    var m = txt.match(/^(\d{1,3}):(\d{1,2})$/);
+    if (m) return +m[1] * 60 + +m[2];
+    m = txt.match(/^(\d+(?:\.\d+)?)\s*(s|sec|secs|second|seconds)$/);
+    if (m) return Math.round(+m[1]);
+    m = txt.match(/^(\d+(?:\.\d+)?)\s*(m|min|mins|minute|minutes)?$/);
+    if (m) return Math.round(+m[1] * 60);
+    return NaN;
+  }
+  function typedTime() {
+    var v = parseTime($("tIn").value);
+    if (!isFinite(v) || v < 1) { toast("Type a time like 7 (minutes), 7:30 or 45s"); $("tIn").focus(); return 0; }
+    return Math.min(v, T_MAX);
   }
   function startPause() {
     if (tRunning) { tRemain = Math.max(0, tEnd - performance.now()); stopTick(); renderTimer(); return; }
@@ -1913,10 +1955,13 @@
     } catch (e) {}
   }
   function resetTimer() { stopTick(); clearDone(); tRemain = st.timerTotal * 1000; renderTimer(); }
-  Array.prototype.forEach.call(document.querySelectorAll("#tPresets button"), function (b) {
+  Array.prototype.forEach.call(document.querySelectorAll("#tPresets button[data-sec]"), function (b) {
     b.addEventListener("click", function () { setTotal(+b.dataset.sec); });
   });
   $("tPlus").addEventListener("click", function () { adjust(30); });
+  $("tSet").addEventListener("click", function () { var v = typedTime(); if (v) setTotal(Math.max(5, v)); });
+  $("tAdd").addEventListener("click", function () { var v = typedTime(); if (v) adjust(v); });
+  $("tIn").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); var v = typedTime(); if (v) setTotal(Math.max(5, v)); } });
   $("tMinus").addEventListener("click", function () { adjust(-30); });
   $("tStart").addEventListener("click", startPause);
   $("tReset").addEventListener("click", resetTimer);
@@ -2686,10 +2731,11 @@
     g.setAttribute("data-sp", a.id);
     g.setAttribute("transform", "translate(" + x.toFixed(1) + "," + y + ")");
     var tw = a.name.length * 8.4 + 34, th = it.h + 16;
-    g.innerHTML = '<g class="mv"><g class="face" transform="scale(' + (-dir * s).toFixed(3) + ',' + s.toFixed(3) + ')"><g class="idle" style="animation-delay:-' + (Math.random() * 3).toFixed(2) + 's"><g transform="translate(-64,-' + a.foot + ')">' + ART[a.id] + '</g></g></g>' +
+    g.innerHTML = '<g class="wk"><g class="mv"><g class="turn"><g class="face" transform="scale(' + (-dir * s).toFixed(3) + ',' + s.toFixed(3) + ')"><g class="idle" style="animation-delay:-' + (Math.random() * 3).toFixed(2) + 's"><g transform="translate(-64,-' + a.foot + ')">' + ART[a.id] + '</g></g></g></g>' +
       '<text class="alert" y="' + (-it.h - 6).toFixed(0) + '">!</text>' +
-      '<g class="tag" transform="translate(0,' + (a.zone === "walk" || a.zone === "bank" || a.zone === "sand" ? -th : 50) + ')"><rect x="' + (-tw / 2) + '" y="-22" width="' + tw + '" height="28" rx="14" fill="#fff" opacity=".95"/><circle cx="' + (-tw / 2 + 15) + '" cy="-8" r="4.5" fill="var(--' + a.rar + ')"/><text x="7" y="-3">' + nsEsc(a.name) + '</text></g></g>';
-    it.el = g; it.mv = g.firstChild;
+      '<g class="tag" transform="translate(0,' + (a.zone === "walk" || a.zone === "bank" || a.zone === "sand" ? -th : 50) + ')"><rect x="' + (-tw / 2) + '" y="-22" width="' + tw + '" height="28" rx="14" fill="#fff" opacity=".95"/><circle cx="' + (-tw / 2 + 15) + '" cy="-8" r="4.5" fill="var(--' + a.rar + ')"/><text x="7" y="-3">' + nsEsc(a.name) + '</text></g></g></g>';
+    it.el = g; it.wk = g.firstChild; it.mv = it.wk.firstChild; it.turn = it.mv.firstChild;
+    it.hx = x; it.hy = y; it.a = a;
     // keep things further down the screen in front
     var kids = nsLayer.children, before = null;
     for (var i = 0; i < kids.length; i++) if (+kids[i].getAttribute("data-y") > y) { before = kids[i]; break; }
@@ -2708,7 +2754,7 @@
     else if (it.kind === "swim") { kf = [{ transform: "translate(0px,70px)", opacity: 0 }, { transform: "translate(-30px,-70px)", opacity: 1, offset: .55 }, { transform: "translate(0px,0px)", opacity: 1 }]; dur = 1500; }
     else { kf = [{ transform: "translate(0px,34px)", opacity: 0 }, { transform: "translate(0px,0px)", opacity: 1 }]; dur = 1300; }
     var an = it.mv.animate ? it.mv.animate(kf, { duration: dur, easing: ease, fill: "both" }) : null;
-    function done() { it.el.classList.remove("moving"); nsTag(it); }
+    function done() { it.el.classList.remove("moving"); nsTag(it); lifeStart(it); }
     if (an) { it.anim = an; an.onfinish = done; } else done();
   }
   function nsTag(it) {
@@ -2717,7 +2763,7 @@
   }
   function nsLeave(it, quick) {
     if (!it || it.leaving) return;
-    it.leaving = true; if (anTipFor === it.el) anTipHide();
+    it.leaving = true; lifeStop(it); if (anTipFor === it.el) anTipHide();
     var t = it.el.querySelector(".tag"); if (t) t.classList.remove("show");
     var kf, dur = quick ? 800 : 1300;
     if (reduceMotion) kf = [{ opacity: 1 }, { opacity: 0 }], dur = 400;
@@ -2732,7 +2778,255 @@
     function done() { it.el.remove(); ns.inst = ns.inst.filter(function (x) { return x !== it; }); nsRenderListen(); }
     if (an) an.onfinish = done; else done();
   }
-  function nsClearAll() { ns.inst.forEach(function (it) { clearTimeout(it.alarmT); if (it.bang) it.bang.remove(); it.el.remove(); }); ns.inst = []; if (typeof anTipHide === "function") anTipHide(); }
+  function nsClearAll() { ns.inst.forEach(function (it) { clearTimeout(it.alarmT); lifeStop(it); if (it.bang) it.bang.remove(); it.el.remove(); }); ns.inst = []; if (typeof anTipHide === "function") anTipHide(); }
+
+  /* ----- life: after the walk-in, animals wander, rest, turn and twitch (calm and slow; none with reduced motion) -----
+     Each species has a profile: m = how it moves, R = [shortest, longest] trip from its home spot (px in the 1600x900 scene),
+     v = px per second, rest = pause between trips (ms), ay = how far it may drift up or down, g = gait, look = chance to
+     turn round while resting. Ground animals keep their y; swimmers and flyers may drift within ay. */
+  var LIFE_KIND = {
+    walk:    { m: "walk", R: [70, 220], v: 30, rest: [3500, 9000], look: .25 },
+    float:   { m: "swim", R: [60, 200], v: 22, rest: [2500, 6000], look: .2, ay: 12, g: "wave" },
+    swim:    { m: "swim", R: [80, 220], v: 34, rest: [900, 3500], look: .15, ay: 26, g: "wave", tilt: 5 },
+    fly:     { m: "perch", look: [7000, 16000], turnP: .5, fx: ["ruffle", "ruffle", "nod"] },
+    flutter: { m: "dart", R: [70, 220], v: 80, rest: [2500, 7000], look: 0, ay: 50, tilt: 6 },
+    pop:     { m: "walk", R: [30, 90], v: 16, rest: [5000, 12000], look: .2, g: "glide" }
+  };
+  var LIFE_ID = {
+    fcrab: { m: "side", R: [50, 140], v: 40, rest: [1800, 5000], g: "", gait: ".28s" },
+    mudskipper: { m: "hop", R: [40, 100], hop: 22, hopLen: 34, rest: [3500, 9000], g: "" },
+    telescope: { m: "still", look: [9000, 20000], fx: ["nod"] },
+    mudlobster: { m: "still", look: [8000, 18000], fx: ["nod", "ruffle"] },
+    archer: { R: [60, 160], v: 24, ay: 12, rest: [1500, 5000] },
+    kingfisher: { look: [4000, 10000], turnP: .55, fx: ["nod", "ruffle"] },
+    macaque: { R: [60, 200], v: 34, gait: ".45s", rest: [3000, 8000], look: .35 },
+    otter: { R: [80, 240], v: 28, ay: 14, rest: [2000, 5500] },
+    hcrab: { R: [25, 70], v: 9, rest: [8000, 18000] },
+    heron: { stepLen: [30, 70], steps: [2, 4], stepRest: [1200, 3000], R: [30, 160], v: 20, rest: [6000, 13000], gait: ".95s", g: "low", look: .3 },
+    monitor: { R: [60, 160], v: 22, gait: ".8s", g: "low", rest: [9000, 22000], look: .2 },
+    dogsnake: { R: [40, 120], v: 26, rest: [6000, 14000], g: "glide", wig: true },
+    storkbill: { look: [9000, 20000], turnP: .4, fx: ["ruffle", "nod"] },
+    croc: { R: [50, 140], v: 15, gait: "1.1s", g: "low", rest: [14000, 32000], look: .15 },
+    eagle: { look: [10000, 22000], turnP: .45, fx: ["ruffle"] },
+    gbheron: { stepLen: [30, 70], steps: [2, 4], stepRest: [1200, 3200], R: [30, 160], v: 20, rest: [6000, 13000], gait: ".95s", g: "low", look: .3 },
+    scarlet: {}, sprite: { R: [60, 180], v: 70 },
+    guppy: { R: [50, 140], v: 44, ay: 16, rest: [500, 2200] },
+    applesnail: { R: [18, 45], v: 5, rest: [9000, 20000] },
+    fieldfrog: { m: "sit", look: [5000, 13000], turnP: .3, fx: ["hop", "hop", "nod"] },
+    paddyfrog: { m: "sit", look: [5000, 13000], turnP: .3, fx: ["hop", "hop", "nod"] },
+    toad: { m: "hop", R: [30, 100], hop: 14, hopLen: 28, rest: [4000, 10000], g: "" },
+    strider: { R: [60, 150], v: 70, rest: [2500, 7000], g: "", ay: 4, gait: ".2s" },
+    slider: { R: [40, 120], v: 14, ay: 8, rest: [5000, 12000] },
+    wtking: { look: [4000, 10000], turnP: .55, fx: ["nod", "ruffle"] },
+    waterhen: { R: [40, 130], v: 38, gait: ".3s", rest: [2500, 7000], look: .4 },
+    pheron: { stepLen: [30, 70], steps: [2, 4], stepRest: [1200, 3000], R: [30, 160], v: 20, rest: [6000, 13000], gait: ".95s", g: "low", look: .3 },
+    pmonitor: { R: [60, 160], v: 22, gait: ".8s", g: "low", rest: [9000, 22000], look: .2 },
+    potter: { R: [80, 240], v: 28, ay: 14, rest: [2000, 5500] },
+    boxterrapin: { R: [25, 70], v: 8, rest: [9000, 20000] },
+    purpleheron: { stepLen: [30, 70], steps: [2, 4], stepRest: [1200, 3000], R: [30, 160], v: 20, rest: [6000, 13000], gait: ".95s", g: "low", look: .3 },
+    clownfish: { R: [30, 80], v: 22, ay: 14, rest: [600, 2200] },
+    wrasse: { R: [120, 300], v: 46, ay: 30 },
+    sergeant: { R: [60, 160], v: 32 },
+    butterfly: { R: [100, 260], v: 34, ay: 26 },
+    seastar: { R: [12, 30], v: 3, rest: [12000, 25000] },
+    clam: { m: "still", look: [8000, 18000], fx: ["nod"] },
+    nudibranch: { R: [20, 60], v: 5, rest: [8000, 18000] },
+    parrotfish: { R: [100, 260], v: 38, ay: 28 },
+    lionfish: { R: [40, 110], v: 14, ay: 12, rest: [2500, 6000] },
+    seahorse: { R: [20, 60], v: 10, ay: 20, rest: [2000, 5000] },
+    moray: { m: "still", look: [9000, 20000], fx: ["nod"], cls: "sway" },
+    octopus: { R: [40, 110], v: 14, rest: [6000, 14000] },
+    stingray: { R: [120, 300], v: 34, ay: 6, rest: [4000, 10000], g: "glide" },
+    turtle: { R: [100, 260], v: 18, ay: 22, rest: [3000, 8000] },
+    manta: { R: [200, 420], v: 40, ay: 40, rest: [800, 3000], g: "glide" },
+    shark: { R: [200, 420], v: 46, ay: 30, rest: [500, 2000], g: "glide" }
+  };
+  var LIFE_CALM = { speed: .5, range: .6, drift: .55, rest: 2 };
+  function lifeRand(a, b) { return a + Math.random() * (b - a); }
+  function lifeClamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+  function lifeProfile(it) {
+    var p = {}, k = LIFE_KIND[it.kind] || LIFE_KIND.pop, o = LIFE_ID[it.id] || {}, n;
+    for (n in k) p[n] = k[n];
+    for (n in o) p[n] = o[n];
+    if (it.zone === "mud" && it.kind === "pop") p.m = p.m === "still" ? "still" : "walk";
+    /* calm factors: everything slower, shorter, and with longer rests than the raw table */
+    if (p.v) p.v *= LIFE_CALM.speed;
+    if (p.R) p.R = [p.R[0] * LIFE_CALM.range, p.R[1] * LIFE_CALM.range];
+    if (p.ay) p.ay *= LIFE_CALM.drift;
+    if (p.tilt) p.tilt *= .6;
+    if (p.stepLen) p.stepLen = [p.stepLen[0] * .7, p.stepLen[1] * .7];
+    if (p.rest) p.rest = [p.rest[0] * LIFE_CALM.rest, p.rest[1] * LIFE_CALM.rest];
+    if (p.stepRest) p.stepRest = [p.stepRest[0] * 1.6, p.stepRest[1] * 1.6];
+    if (p.m === "perch" || p.m === "sit" || p.m === "still") p.look = [p.look[0] * LIFE_CALM.rest, p.look[1] * LIFE_CALM.rest];
+    if (p.hop) p.hop *= .6;
+    if (p.hopLen) p.hopLen *= .7;
+    return p;
+  }
+  function lifeFrozen() { return sceneEl.classList.contains("frozen"); }
+  function lifeAfter(it, ms, fn) {
+    clearTimeout(it.lifeT);
+    it.lifeT = setTimeout(function () { if (it.life && !it.leaving) fn(); }, ms);
+  }
+  function lifeStart(it) {
+    if (reduceMotion || it.life || it.leaving) return;
+    it.life = true; it.prof = lifeProfile(it);
+    it.dirChanges = 0; it.stepsLeft = 0;
+    if (it.prof.g) it.el.classList.add("g-" + it.prof.g);
+    if (it.prof.cls) it.el.classList.add(it.prof.cls);
+    it.el.style.setProperty("--gait", ((parseFloat(it.prof.gait) || .4) * 1.7).toFixed(2) + "s");
+    lifeAfter(it, lifeRand(4000, 12000), function () { lifeNext(it); });
+  }
+  function lifeSetFace(it, dir) {
+    it.dir = dir;
+    var f = it.el.querySelector(".face"); if (f) f.setAttribute("transform", "scale(" + (-dir * it.s).toFixed(3) + "," + it.s.toFixed(3) + ")");
+  }
+  /* a turn squeezes the animal flat, swaps the way it faces, then opens it out again */
+  function lifeTurn(it, dir, cb) {
+    if (!it.turn.animate) { lifeSetFace(it, dir); if (cb) cb(); return; }
+    it.turnTo = dir;
+    var a1 = it.turn.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(.08)" }], { duration: 320, easing: "ease-in", fill: "forwards" });
+    it.turnAs = [a1];
+    a1.onfinish = function () {
+      if (it.turnAs[0] !== a1) return;
+      lifeSetFace(it, dir);
+      var a2 = it.turn.animate([{ transform: "scaleX(.08)" }, { transform: "scaleX(1)" }], { duration: 320, easing: "ease-out", fill: "both" });
+      it.turnAs = [a1, a2];
+      a2.onfinish = function () {
+        if (it.turnAs[1] !== a2) return;
+        it.turnAs = null; it.turnTo = 0; a2.cancel(); a1.cancel();
+        if (cb) cb();
+      };
+    };
+  }
+  function lifeCommit(it, dx, dy) {
+    it.x += dx; it.y += dy;
+    it.el.setAttribute("transform", "translate(" + it.x.toFixed(1) + "," + it.y.toFixed(1) + ")");
+  }
+  /* run one trip on the wk layer, then fold the distance into the animal's real position */
+  function lifeAnimate(it, kfs, dur, ease, dx, dy, cb) {
+    if (!it.wk.animate) { lifeCommit(it, dx, dy); if (cb) cb(); return; }
+    var an = it.wk.animate(kfs, { duration: dur, easing: ease, fill: "both" });
+    it.lifeAnim = an; it.lifeEnd = { dx: dx, dy: dy };
+    if (lifeFrozen()) an.pause();
+    an.onfinish = function () {
+      if (it.lifeAnim !== an) return;
+      lifeCommit(it, dx, dy); it.lifeAnim = null; an.cancel();
+      if (cb) cb();
+    };
+  }
+  function lifePause(on) {
+    ns.inst.forEach(function (it) { if (it.lifeAnim) { try { if (on) it.lifeAnim.pause(); else it.lifeAnim.play(); } catch (e) {} } });
+  }
+  /* stop whatever the animal is doing and leave it exactly where it is on screen */
+  function lifeStop(it) {
+    it.life = false; clearTimeout(it.lifeT); clearTimeout(it.fxT);
+    if (it.turnAs) { it.turnAs.forEach(function (a) { try { a.cancel(); } catch (e) {} }); it.turnAs = null; if (it.turnTo) lifeSetFace(it, it.turnTo); it.turnTo = 0; }
+    if (it.lifeAnim) {
+      var an = it.lifeAnim, ox = 0, oy = 0, ok = false;
+      it.lifeAnim = null; an.onfinish = null;
+      try {
+        var m = getComputedStyle(it.wk).transform;
+        if (m && m !== "none") { var d = new DOMMatrix(m); ox = d.m41; oy = d.m42; ok = isFinite(ox) && isFinite(oy); }
+      } catch (e) {}
+      if (!ok && it.lifeEnd) { ox = it.lifeEnd.dx; oy = it.lifeEnd.dy; }
+      try { an.cancel(); } catch (e) {}
+      lifeCommit(it, ox, oy);
+    }
+    ["moving", "ruffle", "nod", "hop"].forEach(function (c) { if (it.el) it.el.classList.remove(c); });
+  }
+  function lifeClear(it, tx, ty) {
+    var yth = it.prof.ay ? 56 : 34;
+    for (var i = 0; i < ns.inst.length; i++) {
+      var o = ns.inst[i];
+      if (o === it || o.leaving) continue;
+      if (Math.abs(o.x - tx) < (it.w + o.w) / 2 * 0.8 && Math.abs(o.y - ty) < yth) return false;
+    }
+    return true;
+  }
+  function lifeTarget(it) {
+    var p = it.prof, i, tx, ty;
+    if (p.stepLen) {
+      var dirn = it.dir, len = lifeRand(p.stepLen[0], p.stepLen[1]);
+      if (Math.abs(it.x + dirn * len - it.hx) > p.R[1]) dirn = -dirn;
+      tx = lifeClamp(it.x + dirn * len, 140, 1460);
+      return lifeClear(it, tx, it.y) ? { x: tx, y: it.y } : null;
+    }
+    for (i = 0; i < 8; i++) {
+      tx = it.hx + (Math.random() * 2 - 1) * p.R[1];
+      if (Math.abs(tx - it.x) < p.R[0]) continue;
+      tx = lifeClamp(tx, 140, 1460);
+      ty = p.ay ? lifeClamp(it.hy + (Math.random() * 2 - 1) * p.ay, it.hy - p.ay, it.hy + p.ay) : it.y;
+      if (lifeClear(it, tx, ty)) return { x: tx, y: ty };
+    }
+    return null;
+  }
+  /* the path of one trip: straight for walkers, with gentle bends and tilt for swimmers */
+  function lifePath(it, dx, dy) {
+    var p = it.prof, k = [{ transform: "translate(0px,0px) rotate(0deg)" }], n, j, sgn = dx >= 0 ? 1 : -1;
+    if (p.m === "swim" || p.wig) {
+      n = p.wig ? 4 : 2;
+      for (j = 1; j <= n; j++) {
+        var t = j / (n + 1), wob = p.wig ? 0 : (p.ay || 10) * .5, wy = dy * t + (Math.random() - .5) * 2 * wob;
+        var rot = p.wig ? (j % 2 ? 3 : -3) : lifeClamp(Math.atan2(wy - dy * (j - 1) / (n + 1), Math.abs(dx) / (n + 1)) * 57.3 * .6 * sgn, -(p.tilt || 4), p.tilt || 4);
+        k.push({ transform: "translate(" + (dx * t).toFixed(1) + "px," + wy.toFixed(1) + "px) rotate(" + rot.toFixed(1) + "deg)" });
+      }
+    } else if (p.m === "dart") {
+      k.push({ transform: "translate(" + (dx * .5).toFixed(1) + "px," + (dy * .5).toFixed(1) + "px) rotate(" + (lifeClamp(dy / Math.max(40, Math.abs(dx)) * 40, -p.tilt, p.tilt) * sgn).toFixed(1) + "deg)" });
+    }
+    k.push({ transform: "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px) rotate(0deg)" });
+    return k;
+  }
+  function lifeRest(it) {
+    var p = it.prof, ms = lifeRand(p.rest[0], p.rest[1]);
+    if (it.stepsLeft > 0) { it.stepsLeft--; lifeAfter(it, lifeRand(p.stepRest[0], p.stepRest[1]), function () { lifeNext(it); }); return; }
+    if (p.stepLen) it.stepsLeft = Math.round(lifeRand(p.steps[0], p.steps[1])) - 1;
+    if (p.m !== "side" && Math.random() < p.look * .6) {
+      lifeAfter(it, ms * .5, function () { if (lifeFrozen()) { lifeRest(it); return; } lifeTurn(it, -it.dir, function () { lifeAfter(it, ms * .5, function () { lifeNext(it); }); }); });
+    } else lifeAfter(it, ms, function () { lifeNext(it); });
+  }
+  function lifeHops(it, dx, cb) {
+    var p = it.prof, dirn = dx >= 0 ? 1 : -1, left = Math.abs(dx);
+    (function hop() {
+      if (!it.life || it.leaving) return;
+      if (left < 6) { cb(); return; }
+      var h = Math.min(left, p.hopLen * lifeRand(.8, 1.2)); left -= h;
+      var d = dirn * h;
+      lifeAnimate(it, [
+        { transform: "translate(0px,0px)" },
+        { transform: "translate(" + (d / 2).toFixed(1) + "px," + (-p.hop).toFixed(1) + "px)", offset: .5 },
+        { transform: "translate(" + d.toFixed(1) + "px,0px)" }
+      ], 760, "ease-in-out", d, 0, function () { lifeAfter(it, lifeRand(700, 1800), hop); });
+    })();
+  }
+  function lifeNext(it) {
+    if (!it.life || it.leaving) return;
+    if (lifeFrozen()) { lifeAfter(it, 700, function () { lifeNext(it); }); return; }
+    var p = it.prof;
+    if (p.m === "perch" || p.m === "sit" || p.m === "still") {
+      var again = function () { lifeAfter(it, lifeRand(p.look[0], p.look[1]), function () { lifeNext(it); }); };
+      if (p.m !== "still" && Math.random() < p.turnP) { lifeTurn(it, -it.dir, again); return; }
+      var fx = p.fx[Math.floor(Math.random() * p.fx.length)];
+      it.el.classList.remove(fx); void it.el.getBBox(); it.el.classList.add(fx);
+      var ms = fx === "hop" ? 950 : 1350;
+      clearTimeout(it.fxT);
+      it.fxT = setTimeout(function () { it.el.classList.remove(fx); }, ms);
+      again();
+      return;
+    }
+    var t = lifeTarget(it);
+    if (!t) { lifeRest(it); return; }
+    var dx = t.x - it.x, dy = t.y - it.y, dirn = dx >= 0 ? 1 : -1;
+    function go() {
+      if (!it.life || it.leaving) return;
+      if (p.m === "hop") { lifeHops(it, dx, function () { lifeRest(it); }); return; }
+      var dist = Math.sqrt(dx * dx + dy * dy), dur = Math.max(1600, dist / p.v * 1000 * lifeRand(.9, 1.15));
+      var ease = p.m === "dart" ? "cubic-bezier(.45,0,.3,1)" : p.m === "swim" ? "ease-in-out" : "cubic-bezier(.4,0,.6,1)";
+      it.el.classList.add("moving");
+      lifeAnimate(it, lifePath(it, dx, dy), dur, ease, dx, dy, function () { it.el.classList.remove("moving"); lifeRest(it); });
+    }
+    if (p.m !== "side" && dirn !== it.dir) lifeTurn(it, dirn, go); else go();
+  }
+
   /* fun fact: appears only when you hover over (or tap) an animal */
   var anTipEl = $("anTip"), anTipFor = null, anTipT = 0;
   function anTipHide() { clearTimeout(anTipT); anTipFor = null; anTipEl.hidden = true; }
@@ -2896,6 +3190,7 @@
     var o = out().filter(function (it) { return !it.alarmed; });
     if (!o.length) return;
     var it = o[Math.floor(Math.random() * o.length)];
+    lifeStop(it);
     it.alarmed = true; it.el.classList.add("alarm");
     var bl = $("nsBang"), tx = document.createElementNS(SVGNS, "text");
     tx.setAttribute("class", "bang"); tx.setAttribute("x", it.x.toFixed(1)); tx.setAttribute("y", (it.y - it.h - 10).toFixed(1)); tx.textContent = "!";
@@ -2904,9 +3199,9 @@
   }
   function nsScare() {
     ns.state = "scared"; ns.quietMs = 0; ns.runMs = 0; ns.loudMs = 0; ns.calmMs = 0;
-    sceneEl.classList.add("frozen"); nsRenderListen();
+    sceneEl.classList.add("frozen"); lifePause(true); nsRenderListen();
   }
-  function nsCalm() { ns.state = "calm"; ns.quietMs = 0; sceneEl.classList.remove("frozen"); nsRenderListen(); }
+  function nsCalm() { ns.state = "calm"; ns.quietMs = 0; sceneEl.classList.remove("frozen"); lifePause(false); nsRenderListen(); }
   function nsTooLoud() {
     if (!ns.on) return;
     if (ns.manual) { ns.manualMs = 4500; ns.runMs = 0; if (ns.state === "calm") { nsScare(); if (st.noiseLoud !== "pause") nsRunOne(); } else if (st.noiseLoud !== "pause") nsRunOne(); }
@@ -3326,6 +3621,8 @@
   save(); // keeps class ids stable right away, so saved screenshots always find their class
   $("speed").value = st.speed; $("speedOut").textContent = st.speed + " s";
   applyNoteSize(); applyNameSize();
+  if (!isFinite(+st.timerTotal) || +st.timerTotal < 5) st.timerTotal = 300;
+  st.timerTotal = Math.min(T_MAX, Math.round(+st.timerTotal));
   tRemain = st.timerTotal * 1000; renderTimer();
   applyMode(); setView("roster");
   renderAll();

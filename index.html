@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
+<meta name="board-version" content="v35 2026-10-29">
 <title>Who's Up? Class Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -924,6 +925,13 @@
     <section class="set-sec">
       <h3>Animals</h3>
       <p class="help">Each class keeps its own collection across lessons. Common animals come first. The longer the class stays calm without a scare, the better the chance of uncommon and rare ones. Several of the same animal can be out at once.</p>
+      <h3>How much animals move</h3>
+      <div class="opts" id="lifeLvl">
+        <button class="opt" type="button" data-v="calm">Calm<span>Slow, long rests</span></button>
+        <button class="opt" type="button" data-v="normal">Normal<span>Easy to notice from the back</span></button>
+        <button class="opt" type="button" data-v="lively">Lively<span>Quicker, shorter rests</span></button>
+      </div>
+      <div class="cal" id="lifeRM" style="flex-direction:column;align-items:flex-start" hidden><div><b>Your computer asks for less motion</b><span>So the animals stand still. Tick the box to let them wander anyway (they will still not bounce or flap).</span></div><label class="check"><input type="checkbox" id="lifeAnyway"> Let them move</label></div>
       <div class="set-row" style="justify-content:flex-start"><button id="nsAll" type="button">Try it: bring out 6</button><button id="nsScare" type="button">Make them run</button></div>
       <p class="help">Test animals don't count toward the collection.</p>
     </section>
@@ -939,6 +947,7 @@
     <section class="set-sec">
       <h3>Keyboard</h3>
       <p class="keys"><kbd>Q</kbd> Question · <kbd>N</kbd> Names · <kbd>W</kbd> Work time: quiet · <kbd>D</kbd> Work time: discussion<br><kbd>P</kbd> pick · <kbd>T</kbd> start/pause timer · <kbd>&larr;</kbd> <kbd>&rarr;</kbd> flip pictures<br><kbd>1</kbd>–<kbd>8</kbd> +1 to a team · <kbd>Shift</kbd>+<kbd>1</kbd>–<kbd>8</kbd> take 1 off<br><kbd>A</kbd> animals · <kbd>S</kbd> switch scene · <kbd>L</kbd> too loud · <kbd>G</kbd> ladder board · <kbd>Esc</kbd> close</p>
+      <p class="credit" id="verLine">Board version: <b id="verTxt"></b></p>
       <p class="credit">Some animal pictures are adapted from Google Noto Emoji (Apache License 2.0). The rest are drawn for this board. Animal facts are from NParks and Singapore wildlife sources.</p>
     </section>
   </div>
@@ -1015,12 +1024,13 @@
   var DEFAULT_LABELS = [];
   for (var dl = 0; dl < MAXG; dl++) DEFAULT_LABELS.push("Group " + (dl + 1));
   var CONFETTI = ["#e04a63", "#2f6fdb", "#0f9572", "#e19b0e", "#6a4fe0", "#c2409b", "#0e8fa6", "#e8692a"];
+  var APP_VERSION = "v35 \u00b7 29 Oct 2026";
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   function $(id) { return document.getElementById(id); }
 
   /* settings shared by every class */
   var st = { nameScale: 1, mode: "4", speed: 4, scoreMode: "points", timerTotal: 300, view: "question", sceneView: "quiet", vis: {}, visP: {}, noteFs: {}, backdrop: "mangrove", scene: "mangrove", noteMax: 1,
-    noisePreset: "quiet", noiseLines: {}, noiseEvery: 4, noiseLoud: "run", noiseMeter: false, noiseChime: false, noiseMic: "", musicVol: 25 };
+    noisePreset: "quiet", noiseLines: {}, noiseEvery: 4, noiseLoud: "run", noiseMeter: false, noiseChime: false, noiseMic: "", musicVol: 25, lifeLevel: "normal", lifeAnyway: false };
   /* everything else lives on a class */
   var classes = [], activeId = null, legacyCid = null;
   var snapshot = null, spinning = false, viewMode = "roster";
@@ -1888,8 +1898,17 @@
 
   /* ================= timer ================= */
   var tRemain = 0, tEnd = 0, tRunning = false, tInt = null, audio = null;
-  function fmt(ms) { var s = Math.ceil(ms / 1000), m = Math.floor(s / 60); s = s % 60; return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s; }
+  var T_MAX = 10800;
+  function fmt(ms) { if (!isFinite(ms) || ms < 0) ms = 0; var s = Math.ceil(ms / 1000), m = Math.floor(s / 60); s = s % 60; return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s; }
+  /* the timer can never show NaN: any bad value (old save, odd input) is repaired here, whatever caused it */
+  function timerRepair() {
+    var bad = !isFinite(+st.timerTotal) || +st.timerTotal < 5;
+    if (bad) st.timerTotal = 300;
+    st.timerTotal = Math.min(T_MAX, Math.round(+st.timerTotal));
+    if (bad || !isFinite(tRemain) || tRemain < 0) { stopTick(); tRemain = st.timerTotal * 1000; save(); }
+  }
   function renderTimer() {
+    timerRepair();
     $("tTime").textContent = fmt(tRemain);
     var total = st.timerTotal * 1000;
     $("tBar").style.width = (total ? Math.max(0, Math.min(1, tRemain / total)) * 100 : 0) + "%";
@@ -1897,9 +1916,9 @@
   }
   function stopTick() { tRunning = false; clearInterval(tInt); tInt = null; }
   function clearDone() { $("timer").classList.remove("done"); $("tLabel").textContent = ""; }
-  function setTotal(sec) { stopTick(); clearDone(); st.timerTotal = sec; tRemain = sec * 1000; renderTimer(); save(); }
-  var T_MAX = 10800;
+  function setTotal(sec) { sec = +sec; if (!isFinite(sec)) return; stopTick(); clearDone(); st.timerTotal = sec; tRemain = sec * 1000; renderTimer(); save(); }
   function adjust(delta) {
+    if (!isFinite(delta)) return;
     var total = st.timerTotal * 1000;
     if (!tRunning && tRemain === total) { setTotal(Math.min(T_MAX, Math.max(30, st.timerTotal + delta))); return; }
     var wasDone = !tRunning && tRemain <= 0;
@@ -2841,7 +2860,14 @@
     manta: { R: [200, 420], v: 40, ay: 40, rest: [800, 3000], g: "glide" },
     shark: { R: [200, 420], v: 46, ay: 30, rest: [500, 2000], g: "glide" }
   };
-  var LIFE_CALM = { speed: .5, range: .6, drift: .55, rest: 2 };
+  /* how much the animals move: calm = very slow and long rests; normal = easy to notice from the back of a classroom; lively = the raw table above.
+     speed, range, drift, rest multiply the profile; step (herons), tilt, hop (mudskipper, toad), gait (footstep time) soften the details; first = pause before the first trip */
+  var LIFE_LEVELS = {
+    calm:   { speed: .5,  range: .6,  drift: .55, rest: 2,   step: .7,  tilt: .6,  hop: .6,  gait: 1.7, first: [4000, 12000] },
+    normal: { speed: .8,  range: .85, drift: .8,  rest: 1.1, step: .9,  tilt: .85, hop: .85, gait: 1.3, first: [2500, 7000] },
+    lively: { speed: 1,   range: 1,   drift: 1,   rest: .8,  step: 1,   tilt: 1,   hop: 1,   gait: 1,   first: [1500, 4000] }
+  };
+  function lifeLevel() { return LIFE_LEVELS[st.lifeLevel] || LIFE_LEVELS.normal; }
   function lifeRand(a, b) { return a + Math.random() * (b - a); }
   function lifeClamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function lifeProfile(it) {
@@ -2849,17 +2875,18 @@
     for (n in k) p[n] = k[n];
     for (n in o) p[n] = o[n];
     if (it.zone === "mud" && it.kind === "pop") p.m = p.m === "still" ? "still" : "walk";
-    /* calm factors: everything slower, shorter, and with longer rests than the raw table */
-    if (p.v) p.v *= LIFE_CALM.speed;
-    if (p.R) p.R = [p.R[0] * LIFE_CALM.range, p.R[1] * LIFE_CALM.range];
-    if (p.ay) p.ay *= LIFE_CALM.drift;
-    if (p.tilt) p.tilt *= .6;
-    if (p.stepLen) p.stepLen = [p.stepLen[0] * .7, p.stepLen[1] * .7];
-    if (p.rest) p.rest = [p.rest[0] * LIFE_CALM.rest, p.rest[1] * LIFE_CALM.rest];
-    if (p.stepRest) p.stepRest = [p.stepRest[0] * 1.6, p.stepRest[1] * 1.6];
-    if (p.m === "perch" || p.m === "sit" || p.m === "still") p.look = [p.look[0] * LIFE_CALM.rest, p.look[1] * LIFE_CALM.rest];
-    if (p.hop) p.hop *= .6;
-    if (p.hopLen) p.hopLen *= .7;
+    /* level factors: how slow, short and rested the animals are */
+    var K = lifeLevel();
+    if (p.v) p.v *= K.speed;
+    if (p.R) p.R = [p.R[0] * K.range, p.R[1] * K.range];
+    if (p.ay) p.ay *= K.drift;
+    if (p.tilt) p.tilt *= K.tilt;
+    if (p.stepLen) p.stepLen = [p.stepLen[0] * K.step, p.stepLen[1] * K.step];
+    if (p.rest) p.rest = [p.rest[0] * K.rest, p.rest[1] * K.rest];
+    if (p.stepRest) p.stepRest = [p.stepRest[0] * (1 + (1 - K.step) * 2), p.stepRest[1] * (1 + (1 - K.step) * 2)];
+    if (p.m === "perch" || p.m === "sit" || p.m === "still") p.look = [p.look[0] * K.rest, p.look[1] * K.rest];
+    if (p.hop) p.hop *= K.hop;
+    if (p.hopLen) p.hopLen *= K.hop;
     return p;
   }
   function lifeFrozen() { return sceneEl.classList.contains("frozen"); }
@@ -2868,13 +2895,23 @@
     it.lifeT = setTimeout(function () { if (it.life && !it.leaving) fn(); }, ms);
   }
   function lifeStart(it) {
-    if (reduceMotion || it.life || it.leaving) return;
+    it.arrived = true;
+    if ((reduceMotion && !st.lifeAnyway) || it.life || it.leaving) return;
     it.life = true; it.prof = lifeProfile(it);
     it.dirChanges = 0; it.stepsLeft = 0;
     if (it.prof.g) it.el.classList.add("g-" + it.prof.g);
     if (it.prof.cls) it.el.classList.add(it.prof.cls);
-    it.el.style.setProperty("--gait", ((parseFloat(it.prof.gait) || .4) * 1.7).toFixed(2) + "s");
-    lifeAfter(it, lifeRand(4000, 12000), function () { lifeNext(it); });
+    lifeGait(it);
+    lifeAfter(it, lifeRand(lifeLevel().first[0], lifeLevel().first[1]), function () { lifeNext(it); });
+  }
+  function lifeGait(it) { it.el.style.setProperty("--gait", ((parseFloat(it.prof.gait) || .4) * lifeLevel().gait).toFixed(2) + "s"); }
+  /* the level or the reduce-motion choice changed: animals already out pick it up straight away */
+  function lifeRefresh() {
+    ns.inst.forEach(function (it) {
+      if (it.leaving) return;
+      if (it.life) { it.prof = lifeProfile(it); lifeGait(it); }
+      else if (it.arrived) lifeStart(it);
+    });
   }
   function lifeSetFace(it, dir) {
     it.dir = dir;
@@ -3265,6 +3302,9 @@
     Array.prototype.forEach.call($("nsLoud").children, function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-v") === (st.noiseLoud === "pause" ? "pause" : "run")); });
     Array.prototype.forEach.call($("nsPace").children, function (b) { b.setAttribute("aria-pressed", +b.getAttribute("data-v") === nsEvery()); });
     $("speed").value = st.speed; $("speedOut").textContent = st.speed + " s";
+    Array.prototype.forEach.call($("lifeLvl").children, function (b) { b.setAttribute("aria-pressed", b.getAttribute("data-v") === (LIFE_LEVELS[st.lifeLevel] ? st.lifeLevel : "normal")); });
+    $("lifeRM").hidden = !reduceMotion;
+    $("lifeAnyway").checked = !!st.lifeAnyway;
   }
   // Timer end: tell the class how they did.
   function nsWatchTimer() {
@@ -3332,6 +3372,10 @@
     Array.prototype.forEach.call($("nsPace").children, function (b) {
       b.addEventListener("click", function () { st.noiseEvery = +b.getAttribute("data-v"); save(); ns.gapMs = Math.min(ns.gapMs || nsGap(false), nsGap(false)); nsRenderSettings(); });
     });
+    Array.prototype.forEach.call($("lifeLvl").children, function (b) {
+      b.addEventListener("click", function () { st.lifeLevel = b.getAttribute("data-v"); save(); lifeRefresh(); nsRenderSettings(); });
+    });
+    $("lifeAnyway").addEventListener("change", function () { st.lifeAnyway = this.checked; save(); lifeRefresh(); });
     Array.prototype.forEach.call($("nsLoud").children, function (b) {
       b.addEventListener("click", function () { st.noiseLoud = b.getAttribute("data-v"); save(); nsRenderSettings(); nsRenderMeter(); });
     });
@@ -3621,6 +3665,7 @@
   save(); // keeps class ids stable right away, so saved screenshots always find their class
   $("speed").value = st.speed; $("speedOut").textContent = st.speed + " s";
   applyNoteSize(); applyNameSize();
+  $("verTxt").textContent = APP_VERSION;
   if (!isFinite(+st.timerTotal) || +st.timerTotal < 5) st.timerTotal = 300;
   st.timerTotal = Math.min(T_MAX, Math.round(+st.timerTotal));
   tRemain = st.timerTotal * 1000; renderTimer();

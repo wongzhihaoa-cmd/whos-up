@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<meta name="board-version" content="v36 2026-11-10">
+<meta name="board-version" content="v37 2026-11-10">
 <title>Who's Up? Class Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -543,6 +543,14 @@
   .ns-tongue { transform-box: fill-box; transform-origin: 100% 50%; animation: nsTongue 4.5s ease-in-out infinite; }
   @keyframes nsTongue { 0%, 70%, 100% { transform: scaleX(0); } 75%, 85% { transform: scaleX(1); } }
   .scene.frozen .an .idle, .scene.frozen .ns-tongue { animation-play-state: paused; }
+  /* the animal running away keeps its scampering steps even though the scene is frozen */
+  .scene.frozen .an.alarm .idle, .scene.frozen .an.alarm .shd { animation-play-state: running; }
+  .an.alarm.moving .idle { animation-duration: .16s; }
+  .an.alarm.moving .shd { animation-duration: .16s; }
+  /* startle: every animal jumps once when the room first gets too loud */
+  .an.startle .turn { transform-box: fill-box; transform-origin: 50% 100%; animation: nsStartle .42s cubic-bezier(.3,1.4,.5,1) 1; }
+  @keyframes nsStartle { 0% { transform: none; } 35% { transform: translateY(-16px) scale(.96, 1.06); } 70% { transform: translateY(0) scale(1.04, .95); } 100% { transform: none; } }
+  .ns-bang .bang.sm { font-size: 40px; stroke-width: 6px; }
   .an .alert { opacity: 0; transition: opacity .2s; font: 800 44px "Plus Jakarta Sans", system-ui, sans-serif; fill: #e04a63; text-anchor: middle; }
   /* the "!" sits above the haze so it stays sharp */
   .scene .ns-bang { position: absolute; inset: 0; pointer-events: none; }
@@ -1030,7 +1038,7 @@
   var DEFAULT_LABELS = [];
   for (var dl = 0; dl < MAXG; dl++) DEFAULT_LABELS.push("Group " + (dl + 1));
   var CONFETTI = ["#e04a63", "#2f6fdb", "#0f9572", "#e19b0e", "#6a4fe0", "#c2409b", "#0e8fa6", "#e8692a"];
-  var APP_VERSION = "v36 \u00b7 10 Nov 2026";
+  var APP_VERSION = "v37 \u00b7 10 Nov 2026";
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   function $(id) { return document.getElementById(id); }
 
@@ -3221,12 +3229,37 @@
           ns.quietMs = Math.max(0, ns.quietMs - dt * 0.5);
           if (st.noiseLoud !== "pause") {
             ns.runMs += dt;
-            if (ns.runMs >= 5000) { ns.runMs = 0; nsRunOne(); }
+            if (ns.runMs >= 5000) { ns.runMs = 0; nsRunWave(); }
           }
         }
       }
     }
     nsRenderMeter();
+  }
+  /* "!" over an animal; removed after ms (0 = keep until it leaves) */
+  function nsBangOn(it, small, ms) {
+    var bl = $("nsBang"); if (!bl) return null;
+    var tx = document.createElementNS(SVGNS, "text");
+    tx.setAttribute("class", "bang" + (small ? " sm" : "")); tx.setAttribute("x", it.x.toFixed(1)); tx.setAttribute("y", (it.y - it.h - 10).toFixed(1)); tx.textContent = "!";
+    bl.appendChild(tx);
+    if (ms) setTimeout(function () { tx.remove(); }, ms);
+    return tx;
+  }
+  /* the moment the room gets too loud: every animal looks up with a "!" and jumps, then the first one bolts */
+  function nsStartle() {
+    var o = out().filter(function (it) { return !it.alarmed; });
+    o.forEach(function (it, i) {
+      setTimeout(function () {
+        if (it.leaving || it.alarmed) return;
+        nsBangOn(it, true, 1300);
+        if (!reduceMotion) { it.el.classList.remove("startle"); void it.el.getBBox(); it.el.classList.add("startle"); setTimeout(function () { it.el.classList.remove("startle"); }, 450); }
+      }, i * 90);
+    });
+  }
+  function nsRunWave() {
+    ns.wave = (ns.wave || 0) + 1;
+    var n = Math.min(3, ns.wave);
+    for (var i = 0; i < n; i++) setTimeout(nsRunOne, i * 600);
   }
   function nsRunOne() {
     // Shy Safari style: the animal that is about to run shows its own "!" for about a second, then leaves
@@ -3235,20 +3268,20 @@
     var it = o[Math.floor(Math.random() * o.length)];
     lifeStop(it);
     it.alarmed = true; it.el.classList.add("alarm");
-    var bl = $("nsBang"), tx = document.createElementNS(SVGNS, "text");
-    tx.setAttribute("class", "bang"); tx.setAttribute("x", it.x.toFixed(1)); tx.setAttribute("y", (it.y - it.h - 10).toFixed(1)); tx.textContent = "!";
-    if (bl) { bl.appendChild(tx); it.bang = tx; }
-    it.alarmT = setTimeout(function () { if (it.bang) it.bang.remove(); nsLeave(it); }, reduceMotion ? 600 : 1000);
+    it.bang = nsBangOn(it, false, 0);
+    it.alarmT = setTimeout(function () { if (it.bang) it.bang.remove(); nsLeave(it, true); }, reduceMotion ? 600 : 900);
   }
   function nsScare() {
     ns.state = "scared"; ns.quietMs = 0; ns.runMs = 0; ns.loudMs = 0; ns.calmMs = 0;
     sceneEl.classList.add("frozen"); lifePause(true); nsRenderListen();
+    ns.wave = 0;
+    if (st.noiseLoud !== "pause") { nsStartle(); setTimeout(function () { if (ns.state === "scared") nsRunWave(); }, 1100); }
   }
   function nsCalm() { ns.state = "calm"; ns.quietMs = 0; sceneEl.classList.remove("frozen"); lifePause(false); nsRenderListen(); }
   function nsTooLoud() {
     if (!ns.on) return;
-    if (ns.manual) { ns.manualMs = 4500; ns.runMs = 0; if (ns.state === "calm") { nsScare(); if (st.noiseLoud !== "pause") nsRunOne(); } else if (st.noiseLoud !== "pause") nsRunOne(); }
-    else { nsScare(); if (st.noiseLoud !== "pause") nsRunOne(); }
+    if (ns.manual) { ns.manualMs = 4500; ns.runMs = 0; if (ns.state === "calm") nsScare(); else if (st.noiseLoud !== "pause") nsRunOne(); }
+    else if (ns.state === "calm") nsScare(); else if (st.noiseLoud !== "pause") nsRunOne();
   }
   function nsEnterScene(byUser) {
     if (ns.on && !ns.paused) { nsRenderListen(); return; }

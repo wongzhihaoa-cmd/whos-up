@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<meta name="board-version" content="v35 2026-10-29">
+<meta name="board-version" content="v36 2026-11-10">
 <title>Who's Up? Class Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -157,6 +157,7 @@
   .show-t .timer { display: flex; }
   .stage-empty { grid-area: 1 / 1 / -1 / -1; display: none; place-self: center; padding: 14px 20px; border-radius: 14px; color: var(--ink-soft); font-weight: 600; }
   .stage-area[data-layout="none"] .stage-empty { display: block; }
+  .stage-area.scene-mode .stage-empty { display: none !important; }
 
   /* board family: cards fill the stage */
   .stage-area { --side: clamp(280px, 27vw, 430px); }
@@ -515,7 +516,12 @@
   .an.k-flutter .idle { transform-origin: 50% 50%; animation: nsFlutter 1.4s ease-in-out infinite; }
   @keyframes nsFlutter { 0%, 100% { transform: translate(0, 0) scaleX(1); } 25% { transform: translate(6px, -10px) scaleX(.7); } 50% { transform: translate(0, -4px) scaleX(1); } 75% { transform: translate(-6px, -12px) scaleX(.75); } }
   .an.moving .idle { animation: nsStep var(--gait, .4s) ease-in-out infinite; }
-  @keyframes nsStep { 50% { transform: translateY(-6px) rotate(2deg); } }
+  @keyframes nsStep { 0%, 100% { transform: translateY(0) scale(1.035, .955) rotate(-.4deg); } 50% { transform: translateY(-6px) scale(.98, 1.045) rotate(2deg); } }
+  /* ground shadow: smaller and fainter at the top of each step, so the animal looks like it leaves the ground */
+  .an .shd { transform-box: fill-box; transform-origin: 50% 50%; }
+  .an.moving .shd { animation: nsShd var(--gait, .4s) ease-in-out infinite; }
+  .an.g-low.moving .shd, .an.g-wave.moving .shd, .an.g-glide.moving .shd { animation: none; }
+  @keyframes nsShd { 0%, 100% { transform: scale(1.05, 1); opacity: 1; } 50% { transform: scale(.82, .85); opacity: .7; } }
   @keyframes nsStepLow { 50% { transform: translateY(-1px) rotate(.4deg); } }
   @keyframes nsWave { 50% { transform: translateY(1.5px) rotate(-.7deg) scale(1.01, .99); } }
   @keyframes nsGlide { 25% { transform: translateY(-1.5px) rotate(.8deg); } 75% { transform: translateY(1.5px) rotate(-.8deg); } }
@@ -1024,7 +1030,7 @@
   var DEFAULT_LABELS = [];
   for (var dl = 0; dl < MAXG; dl++) DEFAULT_LABELS.push("Group " + (dl + 1));
   var CONFETTI = ["#e04a63", "#2f6fdb", "#0f9572", "#e19b0e", "#6a4fe0", "#c2409b", "#0e8fa6", "#e8692a"];
-  var APP_VERSION = "v35 \u00b7 29 Oct 2026";
+  var APP_VERSION = "v36 \u00b7 10 Nov 2026";
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   function $(id) { return document.getElementById(id); }
 
@@ -2750,7 +2756,7 @@
     g.setAttribute("data-sp", a.id);
     g.setAttribute("transform", "translate(" + x.toFixed(1) + "," + y + ")");
     var tw = a.name.length * 8.4 + 34, th = it.h + 16;
-    g.innerHTML = '<g class="wk"><g class="mv"><g class="turn"><g class="face" transform="scale(' + (-dir * s).toFixed(3) + ',' + s.toFixed(3) + ')"><g class="idle" style="animation-delay:-' + (Math.random() * 3).toFixed(2) + 's"><g transform="translate(-64,-' + a.foot + ')">' + ART[a.id] + '</g></g></g></g>' +
+    g.innerHTML = '<g class="wk"><g class="mv"><g class="turn">' + (a.kind === "walk" && a.id !== "fcrab" ? '<ellipse class="shd" cx="0" cy="1" rx="' + (it.w * .4).toFixed(1) + '" ry="' + Math.max(3, it.w * .07).toFixed(1) + '" fill="rgba(40,28,16,.24)"/>' : '') + '<g class="face" transform="scale(' + (-dir * s).toFixed(3) + ',' + s.toFixed(3) + ')"><g class="idle" style="animation-delay:-' + (Math.random() * 3).toFixed(2) + 's"><g transform="translate(-64,-' + a.foot + ')">' + ART[a.id] + '</g></g></g></g>' +
       '<text class="alert" y="' + (-it.h - 6).toFixed(0) + '">!</text>' +
       '<g class="tag" transform="translate(0,' + (a.zone === "walk" || a.zone === "bank" || a.zone === "sand" ? -th : 50) + ')"><rect x="' + (-tw / 2) + '" y="-22" width="' + tw + '" height="28" rx="14" fill="#fff" opacity=".95"/><circle cx="' + (-tw / 2 + 15) + '" cy="-8" r="4.5" fill="var(--' + a.rar + ')"/><text x="7" y="-3">' + nsEsc(a.name) + '</text></g></g></g>';
     it.el = g; it.wk = g.firstChild; it.mv = it.wk.firstChild; it.turn = it.mv.firstChild;

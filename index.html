@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light">
-<meta name="board-version" content="v37 2026-11-10">
+<meta name="board-version" content="v38 2026-11-13">
 <title>Who's Up? Class Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -33,7 +33,8 @@
     --c6: #0e8fa6; --c6-tint: #e6f5f8;
     --c7: #e8692a; --c7-tint: #fdeee6;
   }
-  html { height: 100%; }
+  /* everything sized in rem grows a little on big classroom screens (16px on a laptop, about 18.5px at 1080p) */
+  html { height: 100%; font-size: clamp(16px, calc(10.5px + .42vw), 20px); }
   *, *::before, *::after { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body {
@@ -61,7 +62,7 @@
   button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .primary:hover:not(:disabled) { background: #304ec4; border-color: #304ec4; }
-  .ico { width: 20px; height: 20px; flex-shrink: 0; display: block; }
+  .ico { width: 1.25rem; height: 1.25rem; flex-shrink: 0; display: block; }
   .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--c0-tint); color: var(--c0); font-size: .72rem; font-weight: 700; }
   kbd { font-family: inherit; font-size: .78em; font-weight: 700; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line-strong); border-bottom-width: 2px; border-radius: 6px; padding: 0 6px; }
   .glass { background: var(--glass); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,.7); }
@@ -111,21 +112,21 @@
   .modes button[aria-pressed="true"]:hover:not(:disabled) { background: var(--ink); }
   .modes button .lbl-short { display: none; }
   .icons { flex: 1 1 0; display: flex; justify-content: flex-end; gap: 8px; min-width: 0; }
-  .ib { display: flex; align-items: center; gap: 6px; height: 42px; min-width: 42px; justify-content: center; padding: 0 12px; border-radius: 999px; background: rgba(255,255,255,.85); border-color: rgba(255,255,255,.9); box-shadow: 0 1px 4px rgba(23,32,51,.1); }
-  .ib.round { width: 42px; padding: 0; }
+  .ib { display: flex; align-items: center; gap: 6px; height: 2.625rem; min-width: 2.625rem; justify-content: center; padding: 0 .75rem; border-radius: 999px; background: rgba(255,255,255,.85); border-color: rgba(255,255,255,.9); box-shadow: 0 1px 4px rgba(23,32,51,.1); }
+  .ib.round { width: 2.625rem; padding: 0; }
   .ib .cnt { font-variant-numeric: tabular-nums; font-weight: 700; }
 
   /* scores strip */
   .scores { display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); gap: 10px; }
   .score { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; padding: 4px 6px 4px 16px; border-radius: 14px; background: var(--glass); box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,.7); }
   .score::before { content: ""; position: absolute; left: 0; top: 9px; bottom: 9px; width: 4px; border-radius: 0 4px 4px 0; background: var(--theme); }
-  .score .s-label { flex: 1; min-width: 0; font-weight: 700; font-size: .8rem; letter-spacing: .07em; text-transform: uppercase; color: var(--theme); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .score .s-label { flex: 1; min-width: 0; font-weight: 700; font-size: .88rem; letter-spacing: .07em; text-transform: uppercase; color: var(--theme); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .s-ctl { display: flex; align-items: center; gap: 8px; }
   .score .s-val { min-width: 2.2ch; text-align: center; font-size: 1.55rem; font-weight: 800; letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; }
   .score .s-val.neg { color: var(--c0); }
   .score .s-val.bump { animation: bump .35s cubic-bezier(.2, 1.4, .4, 1); }
   @keyframes bump { from { transform: scale(.7); } to { transform: scale(1); } }
-  .s-btn { width: 34px; height: 34px; padding: 0; font-size: 1.2rem; font-weight: 700; line-height: 1; border-radius: 10px; flex-shrink: 0; }
+  .s-btn { width: 2.125rem; height: 2.125rem; padding: 0; font-size: 1.2rem; font-weight: 700; line-height: 1; border-radius: 10px; flex-shrink: 0; }
   .s-btn.minus { color: var(--ink-soft); }
   .s-btn.plus { background: var(--tint); border-color: var(--theme); }
   .delta { position: absolute; right: 62px; top: -8px; font-weight: 800; font-size: 1.1rem; pointer-events: none; animation: rise .9s ease-out forwards; }
@@ -171,11 +172,11 @@
   .stage-area[data-layout="none"] { grid-template: "x" 1fr / 1fr; }
 
   /* scene family (quiet work, discussion): question as a banner, the mangrove shows below */
-  .stage-area.scene-mode { grid-template: ". q t" auto ". q n" auto ". . n" 1fr / minmax(0, 1fr) min(1500px, 66vw) minmax(0, 1fr); align-items: start; }
-  .stage-area.scene-mode .timer { justify-self: end; width: min(300px, 100%); }
-  .stage-area.scene-mode .names { justify-self: end; width: min(300px, 100%); max-height: 100%; }
+  .stage-area.scene-mode { grid-template: ". q t" auto ". q n" auto ". . n" 1fr / minmax(0, 1fr) min(1500px, 62vw) minmax(0, 1fr); align-items: start; }
+  .stage-area.scene-mode .timer { justify-self: end; width: min(19rem, 100%); }
+  .stage-area.scene-mode .names { justify-self: end; width: min(19rem, 100%); max-height: 100%; }
   .stage-area.scene-mode[data-layout="t"] .timer, .stage-area.scene-mode[data-layout="n"] .names, .stage-area.scene-mode[data-layout="nt"] .names, .stage-area.scene-mode[data-layout="nt"] .timer { grid-area: auto; }
-  .stage-area.scene-mode[data-layout="t"], .stage-area.scene-mode[data-layout="n"], .stage-area.scene-mode[data-layout="nt"] { grid-template: "a t" auto "a n" auto "a ." 1fr / minmax(0, 1fr) minmax(0, 300px); }
+  .stage-area.scene-mode[data-layout="t"], .stage-area.scene-mode[data-layout="n"], .stage-area.scene-mode[data-layout="nt"] { grid-template: "a t" auto "a n" auto "a ." 1fr / minmax(0, 1fr) minmax(0, 19rem); }
   .stage-area.scene-mode[data-layout="t"] .timer, .stage-area.scene-mode[data-layout="nt"] .timer { grid-area: t; }
   .stage-area.scene-mode[data-layout="n"] .names, .stage-area.scene-mode[data-layout="nt"] .names { grid-area: n; }
   .stage-area.scene-mode[data-layout="q"] .qcard { grid-area: q; }
@@ -214,19 +215,20 @@
   .qbody.drag { outline: 3px dashed var(--accent); outline-offset: -8px; }
 
   .qtools { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; padding: 6px 10px 10px; transition: opacity .25s; }
-  .qtools button { padding: 5px 11px; font-size: .82rem; border-radius: 999px; }
-  .qtools .seg button { padding: 4px 12px; }
+  .qtools button { padding: .35rem .8rem; font-size: .9rem; border-radius: 999px; }
+  .qtools .seg button { padding: .3rem .8rem; }
   .qtools .sep { width: 1px; height: 22px; background: var(--line-strong); margin: 0 4px; }
   .inks { display: flex; gap: 5px; align-items: center; }
   .inks button { width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line-strong); background: var(--c); }
   .inks button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--ink); }
   .qcard:not(.drawing) .ink-only { display: none; }
   .qcard.drawing .type-only { display: none; }
-  .qtools .fsz button { padding: 4px 10px; font-weight: 700; }
+  .qtools .fsz button { padding: .3rem .7rem; font-weight: 700; }
   .bar { display: flex; align-items: center; gap: 6px; }
   .thumbs { display: none; }
   .bar .count { font-weight: 700; font-size: .82rem; color: var(--ink-soft); min-width: 3.4em; text-align: center; font-variant-numeric: tabular-nums; }
-  .empty-hint { color: var(--muted); font-size: .82rem; font-weight: 600; }
+  .empty-hint { color: var(--ink-soft); font-size: .88rem; font-weight: 600; }
+  @media (max-width: 1500px) { .empty-hint { display: none; } }
   .qcard.has-img .empty-hint { display: none; }
   /* with a picture showing, the card tools float over the bottom of the picture (hover, tap or drawing), so the picture gets the whole card */
   .qcard.has-img .qtools { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); padding: 5px 8px; border-radius: 999px; background: rgba(255,255,255,.96); box-shadow: var(--shadow); opacity: 0; pointer-events: none; white-space: nowrap; flex-wrap: nowrap; z-index: 5; }
@@ -275,7 +277,7 @@
   #pickBtn { flex: 1; font-size: 1.15rem; font-weight: 800; padding: 13px 20px; border-radius: 14px; background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 6px 18px rgba(59,91,219,.3); }
   #pickBtn:hover:not(:disabled) { background: #304ec4; }
   #undoBtn { border-radius: 14px; background: rgba(255,255,255,.9); }
-  .hint { margin: 0; min-height: 1.2em; font-weight: 600; color: var(--ink); text-align: center; font-size: .85rem; text-shadow: 0 1px 2px rgba(255,255,255,.8); }
+  .hint { margin: 0; min-height: 1.2em; font-weight: 600; color: var(--ink); text-align: center; font-size: .95rem; text-shadow: 0 1px 2px rgba(255,255,255,.8); }
   .hint:empty { display: none; }
   .stage-area[data-layout="n"]:not(.scene-mode) .names { gap: 14px; }
   .stage-area[data-layout="n"]:not(.scene-mode) .cards4, .stage-area[data-layout="nt"]:not(.scene-mode) .cards4 { grid-template-columns: repeat(var(--ncols, 2), minmax(0, 1fr)); grid-template-rows: repeat(var(--nrows, 2), minmax(0, 1fr)); }
@@ -283,39 +285,64 @@
   .stage-area[data-layout="n"]:not(.scene-mode) .cards4 { gap: 14px; }
   .stage-area[data-layout="n"]:not(.scene-mode) .n-foot { width: min(520px, 100%); align-self: center; }
   .stage-area[data-layout="n"]:not(.scene-mode) #pickBtn { font-size: 1.4rem; padding: 16px; }
-  .stage-area.scene-mode .names .cards4 { flex: none; grid-auto-rows: 64px; grid-template-rows: none; }
+  .stage-area.scene-mode .names .cards4 { flex: none; grid-auto-rows: 4rem; grid-template-rows: none; }
   .stage-area.scene-mode .names .cards1 { flex: none; height: 120px; }
   .stage-area.scene-mode .names .n-head { display: none; }
   .bit { position: absolute; left: 50%; top: 50%; width: 7px; height: 11px; border-radius: 2px; pointer-events: none; z-index: 5; animation: burst 1s cubic-bezier(.1,.7,.3,1) forwards; }
   @keyframes burst { to { transform: translate(var(--x), var(--y)) rotate(var(--r)); opacity: 0; } }
 
   /* ---------- timer ---------- */
-  .timer { flex-direction: column; justify-content: center; gap: 8px; padding: 12px 14px; border-radius: var(--radius); container-type: inline-size; }
-  .t-time { font-size: clamp(2.4rem, 22cqw, 4.6rem); font-weight: 800; letter-spacing: -.03em; text-align: center; line-height: 1; font-variant-numeric: tabular-nums; }
-  .t-label { text-align: center; font-weight: 800; color: var(--c0); }
+  .timer { flex-direction: column; justify-content: center; gap: .55rem; padding: .8rem .9rem; border-radius: var(--radius); container-type: inline-size; }
+  .t-face { display: flex; align-items: center; justify-content: center; gap: .4rem; }
+  .t-time { font-size: clamp(2.2rem, 19cqw, 4.6rem); font-weight: 800; letter-spacing: -.03em; text-align: center; line-height: 1; font-variant-numeric: tabular-nums; padding: .06em .12em; border-radius: 12px; transition: color .3s, background .15s; }
+  div.t-time { cursor: text; }
+  .timer:not(.running) div.t-time:hover, div.t-time:focus-visible { background: rgba(23,32,51,.07); }
+  .timer.running div.t-time { cursor: default; }
+  input.t-time { width: 3.3em; min-width: 0; font-family: inherit; border: 0; outline: 3px solid var(--accent); background: #fff; color: var(--ink); }
+  .t-adj { flex: none; font-size: .85rem; font-weight: 700; padding: .3rem .55rem; border-radius: 999px; color: var(--ink-soft); }
+  .t-label { text-align: center; font-weight: 800; font-size: 1.05rem; color: var(--c0); }
   .t-label:empty { display: none; }
-  .t-bar { height: 6px; border-radius: 999px; background: #e5e9f1; overflow: hidden; }
-  .t-bar span { display: block; height: 100%; width: 100%; background: var(--accent); border-radius: 999px; transition: width .2s linear; }
-  .t-row { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
-  .t-row button { font-size: .78rem; padding: 4px 9px; border-radius: 999px; }
-  #tStart { background: var(--ink); border-color: var(--ink); color: #fff; min-width: 6em; }
+  .t-bar { height: 8px; border-radius: 999px; background: #e5e9f1; overflow: hidden; }
+  .t-bar span { display: block; height: 100%; width: 100%; background: var(--c2); border-radius: 999px; transition: width .2s linear, background .4s; }
+  .timer.low .t-bar span { background: var(--c3); }
+  .timer.last .t-bar span, .timer.done .t-bar span { background: var(--c0); }
+  .timer.last .t-time, .timer.done .t-time { color: var(--c0); }
+  .timer.last.running .t-time { animation: tPulse 1s ease-in-out infinite; }
+  @keyframes tPulse { 50% { transform: scale(1.05); } }
+  .t-row { display: flex; gap: .4rem; justify-content: center; flex-wrap: wrap; }
+  .t-row button { font-size: .88rem; padding: .3rem .7rem; border-radius: 999px; }
+  .t-main button { font-size: 1rem; font-weight: 700; padding: .45rem 1.1rem; }
+  #tStart { background: var(--ink); border-color: var(--ink); color: #fff; min-width: 6.5em; }
+  #tStart:hover:not(:disabled) { background: #26324d; }
+  #tPresets { align-items: center; flex-wrap: nowrap; }
+  #tPresets button { min-width: 2.1em; }
+  .t-unit { font-size: .85rem; font-weight: 700; color: var(--muted); }
+  .stage-area[data-layout="t"]:not(.scene-mode) .t-unit { font-size: 1.1rem; }
+  #tPresets button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  /* while it counts down only the time, Pause, Reset and the 30-second nudges stay: nothing to press by accident */
+  .timer.running #tPresets { display: none; }
   .timer.done { animation: flash .5s steps(2) 8; }
-  .timer.done .t-bar span { background: var(--c0); }
   @keyframes flash { 50% { background: var(--c0-tint); } }
-  .stage-area[data-layout="t"]:not(.scene-mode) .timer { align-items: center; }
+  .stage-area[data-layout="t"]:not(.scene-mode) .timer { align-items: center; gap: 1rem; }
+  .stage-area[data-layout="t"]:not(.scene-mode) .t-face { gap: 1.2rem; }
   .stage-area[data-layout="t"]:not(.scene-mode) .t-time { font-size: clamp(5rem, 20vw, 16rem); }
-  .stage-area[data-layout="t"]:not(.scene-mode) .t-bar { width: min(900px, 90%); height: 10px; }
-  .stage-area[data-layout="t"]:not(.scene-mode) .t-row button { font-size: 1rem; padding: 7px 16px; }
-  .t-custom { align-items: center; }
-  .t-custom input { width: 4.6em; font: inherit; font-size: .85rem; padding: 4px 8px; border: 1px solid var(--line-strong); border-radius: 999px; text-align: center; background: #fff; color: var(--ink); }
-  .t-custom input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .stage-area[data-layout="t"]:not(.scene-mode) .t-custom input { font-size: 1rem; padding: 7px 12px; }
+  .stage-area[data-layout="t"]:not(.scene-mode) .t-bar { width: min(900px, 90%); height: 14px; }
+  .stage-area[data-layout="t"]:not(.scene-mode) .t-row button { font-size: 1.1rem; padding: .5rem 1.1rem; }
+  .stage-area[data-layout="t"]:not(.scene-mode) .t-main button { font-size: 1.3rem; padding: .6rem 1.8rem; }
+  .stage-area[data-layout="t"]:not(.scene-mode) .t-adj { font-size: 1.1rem; padding: .5rem .9rem; }
   .stage-area[data-layout="nt"]:not(.scene-mode) .timer { flex-direction: row; flex-wrap: wrap; align-items: center; padding: 8px 16px; gap: 8px 16px; }
   .stage-area[data-layout="nt"]:not(.scene-mode) .t-time { font-size: 2.4rem; }
   .stage-area[data-layout="nt"]:not(.scene-mode) .t-bar { flex: 1; min-width: 120px; }
-  .stage-area.scene-mode #tPresets { display: none; }
-  .stage-area.scene-mode .timer:hover #tPresets, .stage-area.scene-mode .timer:focus-within #tPresets { display: flex; }
-  .stage-area.scene-mode .t-time { font-size: clamp(2.4rem, 20cqw, 4rem); }
+  .stage-area.scene-mode .t-time { font-size: clamp(2rem, 17cqw, 3.6rem); }
+  /* narrow timer card (Work time on a laptop screen): the time gets its own row, the 30-second nudges sit under it */
+  @container (max-width: 250px) {
+    .t-face { flex-wrap: wrap; }
+    .stage-area.scene-mode .t-face .t-time { flex: 1 0 100%; order: -1; font-size: clamp(2rem, 25cqw, 3.6rem); }
+    .t-adj { flex: 1 1 0; }
+    .t-main button { flex: 1 1 0; min-width: 0 !important; padding: .4rem .5rem; }
+    .t-row { gap: .25rem; }
+    #tPresets button { padding: .3rem .45rem; }
+  }
 
   /* ---------- dock + listening chip ---------- */
   .bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; min-height: 0; pointer-events: none; }
@@ -323,27 +350,34 @@
   .dock { display: flex; gap: 4px; padding: 5px; border-radius: 999px; margin: 0 auto; transition: opacity .3s; }
   .dock button { display: flex; align-items: center; gap: 6px; border: 0; background: transparent; box-shadow: none; border-radius: 999px; padding: 7px 13px; color: var(--muted); }
   .dock button[aria-pressed="true"] { color: var(--ink); background: rgba(23,32,51,.07); }
+  .dock-cap { align-self: center; padding: 0 .3rem 0 .7rem; font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .dock button[data-k]::after { content: ""; width: .5rem; height: .5rem; border-radius: 50%; background: transparent; box-shadow: inset 0 0 0 2px var(--line-strong); flex: none; }
+  .dock button[data-k][aria-pressed="true"]::after { background: var(--c2); box-shadow: none; }
+  body.phone .dock-cap, body.phone .dock button[data-k]::after { display: none; }
   .dock button[aria-pressed="false"] .ico { opacity: .5; }
-  .dock .dl { font-size: .8rem; }
-  .listen { position: fixed; left: 16px; bottom: 14px; z-index: 3; width: min(320px, calc(100vw - 32px)); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
-  .l-row { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
+  .dock .dl { font-size: .9rem; }
+  .listen { position: fixed; left: 16px; bottom: 14px; z-index: 3; width: min(19rem, calc(100vw - 32px)); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .l-row { display: flex; align-items: center; gap: 8px; font-size: .95rem; }
+  .l-gear { flex: none; width: 1.9rem; height: 1.9rem; padding: 0; display: grid; place-items: center; border-radius: 50%; border-color: transparent; background: transparent; color: var(--ink-soft); }
+  .l-gear .ico { width: 1.1rem; height: 1.1rem; }
+  body.idle .listen .l-gear, body.phone .listen .l-gear { display: none; }
   .l-row b { flex: 1; min-width: 0; }
   .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
   .listen.on .dot { background: var(--c2); box-shadow: 0 0 0 4px rgba(15,149,114,.18); }
   .listen.warn .dot { background: var(--c3); } .listen.loud .dot { background: var(--c0); box-shadow: 0 0 0 4px rgba(224,74,99,.2); }
   .listen.loud b { color: var(--c0); }
   .l-kind { align-self: stretch; }
-  .l-kind button { padding: 5px 10px; font-size: .8rem; font-weight: 700; }
+  .l-kind button { padding: .35rem .6rem; font-size: .88rem; font-weight: 700; }
   body.idle .listen .l-kind { display: none; }
   .l-act { display: none; }
   body.idle .l-act { display: inline; }
   .l-pct { color: var(--ink-soft); font-variant-numeric: tabular-nums; font-size: .78rem; font-weight: 600; }
-  .l-msg { margin: 0; font-size: .8rem; color: var(--ink-soft); line-height: 1.4; }
+  .l-msg { margin: 0; font-size: .85rem; color: var(--ink-soft); line-height: 1.4; }
   .l-btns { display: flex; gap: 6px; flex-wrap: wrap; }
-  .l-btns button { padding: 5px 11px; font-size: .82rem; border-radius: 999px; }
+  .l-btns button { flex: 1 1 0; padding: .4rem .8rem; font-size: .92rem; font-weight: 700; border-radius: 999px; white-space: nowrap; }
   #lLoud { color: var(--c0); border-color: #f2b8c3; }
   .listen.manual .ns-track { display: none; }
-  .ns-track { position: relative; height: 10px; border-radius: 999px; background: #e3e8f0; }
+  .ns-track { position: relative; height: 12px; border-radius: 999px; background: #e3e8f0; }
   .ns-track.big { height: 26px; border-radius: 8px; }
   .ns-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: inherit; background: var(--c2); transition: width .1s linear, background .3s; }
   .ns-fill.warn { background: var(--c3); } .ns-fill.loud { background: var(--c0); }
@@ -362,6 +396,19 @@
 
   .toast { position: fixed; left: 50%; top: 66px; z-index: 95; transform: translate(-50%, -12px); opacity: 0; pointer-events: none; max-width: 90vw; text-align: center; background: var(--ink); color: #fff; border-radius: 12px; box-shadow: var(--shadow-lg); padding: 10px 18px; font-weight: 700; font-size: .95rem; transition: opacity .2s, transform .2s; }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  /* first sighting of a species: a card with its picture, big enough to read from the back */
+  .arrive { position: fixed; left: 50%; bottom: 5rem; z-index: 94; transform: translateX(-50%); display: flex; align-items: center; gap: 1rem; max-width: 92vw; padding: .8rem 1.5rem .8rem 1rem; border-radius: 22px; background: #fff; box-shadow: 0 0 0 3px var(--rc, var(--common)), var(--shadow-lg); cursor: pointer; animation: arIn .55s cubic-bezier(.2, 1.3, .4, 1); }
+  .arrive.common { --rc: var(--common); } .arrive.uncommon { --rc: var(--uncommon); } .arrive.rare { --rc: var(--rare); }
+  .arrive.out { opacity: 0; transform: translate(-50%, 14px); transition: opacity .35s, transform .35s; }
+  .arrive svg { width: 6.5rem; height: 6rem; flex: none; overflow: visible; animation: arWob 1.6s ease-in-out .5s 2; }
+  .arrive small { display: block; font-size: .8rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--rc); }
+  .arrive b { display: block; font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+  .arrive p { margin: .25rem 0 0; font-size: .95rem; font-weight: 600; color: var(--ink-soft); }
+  .arrive .tg { display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: 999px; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  @keyframes arIn { from { opacity: 0; transform: translate(-50%, 20px) scale(.85); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+  @keyframes arWob { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-5deg); } 75% { transform: rotate(5deg); } }
+  #animalsBtn.bump { animation: bump .5s cubic-bezier(.2, 1.4, .4, 1); box-shadow: 0 0 0 3px var(--rare), 0 1px 4px rgba(23,32,51,.1); }
+  body.phone .arrive { bottom: calc(4.6rem + env(safe-area-inset-bottom)); padding: .6rem 1rem .6rem .7rem; } body.phone .arrive svg { width: 4.2rem; height: 3.8rem; } body.phone .arrive b { font-size: 1.3rem; }
   .toast .tg { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; vertical-align: 1px; }
   .tg.common { background: #e3f1e3; color: #2f6b33; } .tg.uncommon { background: #e3ecfd; color: #2554b8; } .tg.rare { background: #fff1c4; color: #8a5a00; }
 
@@ -563,8 +610,9 @@
   @media (max-width: 1100px) {
     .modes button .lbl-long { display: none; }
     .modes button .lbl-short { display: inline; }
-    .dock .dl { display: none; }
+    .dock .dl, .dock-cap { display: none; }
   }
+  @media (max-width: 1500px) { .dock-cap { display: none; } .dock button[data-k] { padding-left: 11px; padding-right: 11px; } }
   @media (max-width: 620px) {
     .modes button { padding: 8px 12px; }
     .modes button span { display: none !important; }
@@ -770,9 +818,9 @@
           <button type="button" id="qDraw" aria-pressed="false">Draw</button>
         </div>
         <div class="seg fsz type-only" role="group" aria-label="Text size">
-          <button type="button" id="qSmall" title="Smaller text" aria-label="Smaller text">A&minus;</button>
+          <button type="button" id="qSmall" title="One step smaller" aria-label="Smaller text">A&minus;</button>
           <button type="button" id="qAuto" aria-pressed="true" title="Auto size: the text shrinks to fit, so it stays clear of the animals">Auto</button>
-          <button type="button" id="qBig" title="Bigger text" aria-label="Bigger text">A+</button>
+          <button type="button" id="qBig" title="One step bigger" aria-label="Bigger text">A+</button>
         </div>
         <div class="inks ink-only" id="inkCols" role="group" aria-label="Pen colour"></div>
         <button type="button" class="ink-only" id="inkUndo">Undo</button>
@@ -787,8 +835,8 @@
           <button id="delSlide" type="button" aria-label="Remove this picture">Remove</button>
           <button id="clearSlides" type="button" aria-label="Remove all pictures">Clear all</button>
         </div>
-        <span class="empty-hint" id="empty">Paste a screenshot or a YouTube link with <kbd>Ctrl</kbd>+<kbd>V</kbd>, or drop images here</span>
-        <button id="pasteBtn" type="button">Paste</button>
+        <span class="empty-hint" id="empty"><kbd>Ctrl</kbd>+<kbd>V</kbd> pastes a picture or YouTube link</span>
+        <button id="pasteBtn" type="button" title="Paste a screenshot or a YouTube link (Ctrl+V). You can also drop pictures onto the card">Paste</button>
         <button id="fileBtn" type="button" title="Add one or more pictures to the queue">+ Picture</button>
         <button id="textBtn" type="button" title="Add a text-only question to the queue">+ Text</button>
         <input id="fileInput" type="file" accept="image/*" multiple hidden>
@@ -812,26 +860,25 @@
     </aside>
 
     <section class="timer glass" id="timer" aria-label="Timer">
-      <div class="t-time" id="tTime">05:00</div>
+      <div class="t-face">
+        <button type="button" class="t-adj" id="tMinus" title="Take 30 seconds off" aria-label="30 seconds less">&minus;30s</button>
+        <div class="t-time" id="tTime" role="button" tabindex="0" title="Click to type a time: 7 for minutes, 7:30, or 45s">05:00</div>
+        <input class="t-time" id="tIn" type="text" inputmode="decimal" autocomplete="off" hidden aria-label="Type a time: 7 for minutes, 7:30, or 45s. Press Enter to set it">
+        <button type="button" class="t-adj" id="tPlus" title="Add 30 seconds, even while it is running" aria-label="30 seconds more">+30s</button>
+      </div>
       <div class="t-label" id="tLabel"></div>
       <div class="t-bar"><span id="tBar"></span></div>
-      <div class="t-row">
+      <div class="t-row t-main">
         <button type="button" id="tStart">Start</button>
         <button type="button" id="tReset">Reset</button>
       </div>
       <div class="t-row" id="tPresets">
-        <button type="button" id="tMinus">&minus;30s</button>
-        <button type="button" data-sec="60">1m</button>
-        <button type="button" data-sec="120">2m</button>
-        <button type="button" data-sec="180">3m</button>
-        <button type="button" data-sec="300">5m</button>
-        <button type="button" data-sec="600">10m</button>
-        <button type="button" id="tPlus">+30s</button>
-      </div>
-      <div class="t-row t-custom" id="tCustom">
-        <input id="tIn" type="text" inputmode="decimal" autocomplete="off" placeholder="min" aria-label="Type a time: 7 for minutes, 7:30, or 45s">
-        <button type="button" id="tSet" title="Set the timer to the time you typed (Enter)">Set</button>
-        <button type="button" id="tAdd" title="Add the time you typed to the timer, even while it is running">+ Add</button>
+        <button type="button" data-sec="60" aria-label="1 minute">1</button>
+        <button type="button" data-sec="120" aria-label="2 minutes">2</button>
+        <button type="button" data-sec="180" aria-label="3 minutes">3</button>
+        <button type="button" data-sec="300" aria-label="5 minutes">5</button>
+        <button type="button" data-sec="600" aria-label="10 minutes">10</button>
+        <span class="t-unit">min</span>
       </div>
     </section>
     <div class="stage-empty glass">Everything is hidden in this mode. Use the buttons at the bottom to show something.</div>
@@ -840,6 +887,7 @@
   <div class="bottom">
     <div class="phonebar glass" id="phonebar"></div>
     <nav class="dock glass" id="dock" aria-label="Show or hide">
+      <span class="dock-cap">Show</span>
       <button type="button" data-k="q" title="Show or hide the question"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="3"/><path d="M8 21h8"/><path d="M10 9.5a2 2 0 1 1 2.8 1.8c-.5.3-.8.7-.8 1.2"/><path d="M12 15h.01"/></svg><span class="dl">Question</span></button>
       <button type="button" data-k="n" title="Show or hide the names"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c.8-3.2 3.2-5 6-5s5.2 1.8 6 5"/><circle cx="17" cy="9" r="2.5"/><path d="M16.5 14c2.4.2 4 1.7 4.5 4"/></svg><span class="dl">Names</span></button>
       <button type="button" data-k="t" title="Show or hide the timer"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg><span class="dl">Timer</span></button>
@@ -851,7 +899,7 @@
 </div>
 
 <div class="listen glass" id="listen" hidden>
-  <div class="l-row"><span class="dot"></span><b id="lStatus">Not listening</b><span class="l-pct" id="lPct"></span></div>
+  <div class="l-row"><span class="dot"></span><b id="lStatus">Not listening</b><span class="l-pct" id="lPct"></span><button type="button" id="lSet" class="l-gear" title="Noise settings" aria-label="Noise settings"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg></button></div>
   <div class="seg l-kind" id="lKind" role="group" aria-label="Activity"><button type="button" data-sv="quiet" title="Quiet work: strict noise line (W)">Quiet work</button><button type="button" data-sv="discuss" title="Discussion in groups: looser noise line (D)">Discussion</button></div>
   <div class="ns-track"><div class="ns-fill" id="nsFill"></div><div class="ns-line" id="nsLineMk"></div></div>
   <p class="l-msg" id="lMsg" hidden></p>
@@ -859,11 +907,11 @@
     <button type="button" class="primary" id="lGo">Start listening</button>
     <button type="button" id="lPause">Pause</button>
     <button type="button" id="lLoud" title="Scare the animals yourself (L)">Too loud</button>
-    <button type="button" id="lSet">Noise settings</button>
   </div>
 </div>
 
 <div class="toast" id="toast" role="status"></div>
+<div class="arrive" id="arrive" role="status" hidden></div>
 <div class="an-tip" id="anTip" role="tooltip" hidden></div>
 
 <div class="board-ov" id="boardOv" hidden>
@@ -1043,7 +1091,7 @@
   function $(id) { return document.getElementById(id); }
 
   /* settings shared by every class */
-  var st = { nameScale: 1, mode: "4", speed: 4, scoreMode: "points", timerTotal: 300, view: "question", sceneView: "quiet", vis: {}, visP: {}, noteFs: {}, backdrop: "mangrove", scene: "mangrove", noteMax: 1,
+  var st = { nameScale: 1, mode: "4", speed: 4, scoreMode: "points", timerTotal: 300, view: "question", sceneView: "quiet", vis: {}, visP: {}, noteFs: {}, noteLv: {}, backdrop: "mangrove", scene: "mangrove", noteMax: 1,
     noisePreset: "quiet", noiseLines: {}, noiseEvery: 4, noiseLoud: "run", noiseMeter: false, noiseChime: false, noiseMic: "", musicVol: 25, lifeLevel: "normal", lifeAnyway: false };
   /* everything else lives on a class */
   var classes = [], activeId = null, legacyCid = null;
@@ -1927,6 +1975,11 @@
     var total = st.timerTotal * 1000;
     $("tBar").style.width = (total ? Math.max(0, Math.min(1, tRemain / total)) * 100 : 0) + "%";
     $("tStart").textContent = tRunning ? "Pause" : (tRemain > 0 && tRemain < total ? "Resume" : "Start");
+    var T = $("timer"), part = tRemain > 0 && tRemain < total;
+    T.classList.toggle("running", tRunning);
+    T.classList.toggle("last", part && tRemain <= 10000);
+    T.classList.toggle("low", part && tRemain > 10000 && tRemain <= total * 0.25);
+    Array.prototype.forEach.call(document.querySelectorAll("#tPresets button[data-sec]"), function (b) { b.setAttribute("aria-pressed", +b.dataset.sec === st.timerTotal); });
   }
   function stopTick() { tRunning = false; clearInterval(tInt); tInt = null; }
   function clearDone() { $("timer").classList.remove("done"); $("tLabel").textContent = ""; }
@@ -1954,10 +2007,20 @@
     if (m) return Math.round(+m[1] * 60);
     return NaN;
   }
-  function typedTime() {
-    var v = parseTime($("tIn").value);
-    if (!isFinite(v) || v < 1) { toast("Type a time like 7 (minutes), 7:30 or 45s"); $("tIn").focus(); return 0; }
-    return Math.min(v, T_MAX);
+  /* click the time to type a new one (Enter sets it, Esc cancels) */
+  var tEditFrom = "";
+  function tEditOpen() {
+    if (tRunning) return;
+    var i = $("tIn"); tEditFrom = i.value = fmt(tRemain).replace(/^0(\d:)/, "$1");
+    $("tTime").hidden = true; i.hidden = false; i.focus(); i.select();
+  }
+  function tEditClose(apply) {
+    var i = $("tIn"); if (i.hidden) return;
+    var txt = i.value.trim(); i.hidden = true; $("tTime").hidden = false;
+    if (!apply || !txt || txt === tEditFrom) return;
+    var v = parseTime(txt);
+    if (!isFinite(v) || v < 1) { toast("Type a time like 7 (minutes), 7:30 or 45s"); return; }
+    setTotal(Math.max(5, Math.min(v, T_MAX)));
   }
   function startPause() {
     if (tRunning) { tRemain = Math.max(0, tEnd - performance.now()); stopTick(); renderTimer(); return; }
@@ -1992,9 +2055,13 @@
     b.addEventListener("click", function () { setTotal(+b.dataset.sec); });
   });
   $("tPlus").addEventListener("click", function () { adjust(30); });
-  $("tSet").addEventListener("click", function () { var v = typedTime(); if (v) setTotal(Math.max(5, v)); });
-  $("tAdd").addEventListener("click", function () { var v = typedTime(); if (v) adjust(v); });
-  $("tIn").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); var v = typedTime(); if (v) setTotal(Math.max(5, v)); } });
+  $("tTime").addEventListener("click", tEditOpen);
+  $("tTime").addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tEditOpen(); } });
+  $("tIn").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") { e.preventDefault(); tEditClose(true); }
+    else if (e.key === "Escape") { e.stopPropagation(); tEditClose(false); }
+  });
+  $("tIn").addEventListener("blur", function () { tEditClose(true); });
   $("tMinus").addEventListener("click", function () { adjust(-30); });
   $("tStart").addEventListener("click", startPause);
   $("tReset").addEventListener("click", resetTimer);
@@ -2457,28 +2524,47 @@
   /* text size: Auto by default (fits the card, and stays a modest banner on the scene); A-/A+ fix a size.
      The scene and the full board remember their own size. */
   function noteCtx() { return $("main").classList.contains("scene-mode") ? "scene" : "board"; }
-  function manualFs() { var o = st.noteFs; return o && typeof o === "object" && +o[noteCtx()] > 0 ? +o[noteCtx()] : 0; }
-  function noteSizeBy(f) {
-    var cur = manualFs() || parseFloat(note.style.fontSize) || 40;
-    if (!st.noteFs || typeof st.noteFs !== "object") st.noteFs = {};
-    st.noteFs[noteCtx()] = Math.round(Math.max(14, Math.min(220, cur * f)));
-    save(); fitNote();
+  /* Auto picks the biggest size that fits, from a fixed ladder of sizes, so the text changes in clear steps instead of
+     creeping while you type. A- / A+ move whole steps away from Auto and are remembered (one setting for the board, one for the scene).
+     On the scene A+ lets the banner grow taller; on the board Auto is already the biggest that fits. */
+  var NOTE_STEPS = [150, 128, 110, 94, 80, 68, 58, 50, 43, 37, 32, 28, 24, 21, 18, 16], NOTE_MIN = -6;
+  function noteMaxLv() { return noteCtx() === "scene" || $("qcard").classList.contains("has-img") ? 3 : 0; }
+  function noteLv() {
+    var o = st.noteLv, v = o && typeof o === "object" ? Math.round(+o[noteCtx()]) : 0;
+    return isFinite(v) ? Math.max(NOTE_MIN, Math.min(noteMaxLv(), v)) : 0;
   }
-  function noteSizeAuto() { if (st.noteFs && typeof st.noteFs === "object") st.noteFs[noteCtx()] = 0; save(); fitNote(); }
-  function updNoteSizeUI() { var m = manualFs(), a = $("qAuto"); a.setAttribute("aria-pressed", !m); a.title = m ? "Text is fixed at " + m + " px. Click to go back to auto size" : "Auto size: the text shrinks to fit, so it stays clear of the animals"; }
+  function noteStep(px, down) {
+    var i = 0; while (i < NOTE_STEPS.length - 1 && NOTE_STEPS[i] > px + 0.5) i++;
+    return NOTE_STEPS[Math.min(NOTE_STEPS.length - 1, i + (down || 0))];
+  }
+  function noteSizeBy(d) {
+    var cur = noteLv(), lv = cur, was = note.style.fontSize, lim = d > 0 ? noteMaxLv() : NOTE_MIN;
+    if (!st.noteLv || typeof st.noteLv !== "object") st.noteLv = {};
+    // keep stepping until the text really changes size, so a press never looks like it did nothing
+    while (lv !== lim && note.style.fontSize === was) { lv += d; st.noteLv[noteCtx()] = lv; fitNote(); }
+    if (note.style.fontSize === was) { st.noteLv[noteCtx()] = cur; fitNote(); toast(d > 0 ? "That's the biggest that fits here" : "That's the smallest size"); }
+    save();
+  }
+  function noteSizeAuto() { if (st.noteLv && typeof st.noteLv === "object") st.noteLv[noteCtx()] = 0; save(); fitNote(); }
+  function updNoteSizeUI() {
+    var lv = noteLv(), a = $("qAuto");
+    a.setAttribute("aria-pressed", !lv);
+    a.title = lv ? "Text is " + Math.abs(lv) + " step" + (Math.abs(lv) === 1 ? "" : "s") + (lv > 0 ? " bigger" : " smaller") + " than Auto. Click to go back to Auto" : "Auto: the biggest size that fits, and it stays clear of the animals";
+    $("qBig").disabled = lv >= noteMaxLv(); $("qSmall").disabled = lv <= NOTE_MIN;
+  }
   function applyNoteSize() { fitNote(); }
   function fitsAt(px) { note.style.fontSize = px + "px"; return note.scrollHeight <= note.clientHeight + 1; }
   function fitNote() {
     var q = $("qcard");
     if (!q || !q.offsetWidth) return;
     var body = $("stage"), W = body.clientWidth, txt = note.value.trim(), hasImg = q.classList.contains("has-img"), sc = $("main").classList.contains("scene-mode");
-    var man = manualFs();
+    var lv = noteLv();
     updNoteSizeUI();
     q.classList.toggle("no-text", !txt);
     note.style.paddingTop = ""; note.style.paddingBottom = "";
     if (hasImg) {
       note.style.height = "0px";
-      var fs = man || Math.max(16, Math.min(40, W / 28));
+      var fs = Math.round(Math.max(16, Math.min(40, W / 28)) * Math.pow(1.18, lv));
       note.style.fontSize = fs + "px";
       note.style.height = "0px";
       var need = note.scrollHeight;
@@ -2489,27 +2575,21 @@
     if (sc) {
       // banner: fit inside a capped height, then shrink the card to the text
       var mainH = $("main").clientHeight, cardMax = Math.min(window.innerHeight * 0.72, window.innerHeight - 330);
-      var Hmax = Math.max(110, man ? Math.min(mainH * 0.62, cardMax - 70) : mainH * 0.3);
-      if (man) {
-        note.style.fontSize = man + "px"; note.style.height = "0px";
-        var need = note.scrollHeight + 2;
-        if (need > Hmax) { var cs = getComputedStyle(note), lh = parseFloat(cs.lineHeight) || man * 1.2, pad = parseFloat(cs.paddingTop); note.style.paddingBottom = "0px"; need = pad + Math.max(1, Math.floor((Hmax - pad) / lh)) * lh; }
-        note.style.height = need + "px"; return;
-      }
+      var up = Math.max(0, lv), Hmax = Math.max(110, Math.min(mainH * (0.3 + 0.11 * up), cardMax - 70));
+      maxPx = Math.min(80 * Math.pow(1.18, up), W / 9); hi = maxPx;
       note.style.height = Hmax + "px";
       if (!txt) { note.style.fontSize = Math.min(maxPx, 56) + "px"; note.style.height = "0px"; note.style.height = (note.scrollHeight + 2) + "px"; return; }
       for (var i = 0; i < 9; i++) { var mid = (lo + hi) / 2; if (fitsAt(mid)) lo = mid; else hi = mid; }
-      note.style.fontSize = lo + "px";
+      note.style.fontSize = noteStep(lo, Math.max(0, -lv)) + "px";
       note.style.height = "0px";
       note.style.height = Math.min(Hmax, note.scrollHeight + 2) + "px";
       return;
     }
     note.style.height = "";
-    if (man) note.style.fontSize = man + "px";
-    else if (!txt) { note.style.fontSize = Math.min(maxPx, Math.max(28, W / 12)) + "px"; }
+    if (!txt) { note.style.fontSize = Math.min(maxPx, Math.max(28, W / 12)) + "px"; }
     else {
       for (var j = 0; j < 9; j++) { var md = (lo + hi) / 2; if (fitsAt(md)) lo = md; else hi = md; }
-      note.style.fontSize = lo + "px";
+      note.style.fontSize = noteStep(lo, -lv) + "px";
     }
     // centre short text vertically in the card
     var H = note.clientHeight; note.style.flex = "none"; note.style.height = "0px"; var needH = note.scrollHeight; note.style.height = ""; note.style.flex = "";
@@ -2534,8 +2614,8 @@
     else { C()[ctxNoteKey()] = note.value; save(); }
     fitNote();
   });
-  $("qBig").addEventListener("click", function () { noteSizeBy(1.15); });
-  $("qSmall").addEventListener("click", function () { noteSizeBy(1 / 1.15); });
+  $("qBig").addEventListener("click", function () { noteSizeBy(1); });
+  $("qSmall").addEventListener("click", function () { noteSizeBy(-1); });
   $("qAuto").addEventListener("click", noteSizeAuto);
   function applyNameSize() { $("names").style.setProperty("--ns", st.nameScale); $("nSize").textContent = Math.round(st.nameScale * 100) + "%"; }
   function nameBy(f) { st.nameScale = Math.max(0.5, Math.min(1.8, +(st.nameScale * f).toFixed(2))); applyNameSize(); save(); }
@@ -3107,6 +3187,19 @@
       });
     } catch (e) {}
   }
+  var arriveT = null;
+  function nsCelebrateHide() { var el = $("arrive"); clearTimeout(arriveT); if (el.hidden) return; el.classList.add("out"); arriveT = setTimeout(function () { el.hidden = true; el.classList.remove("out"); }, 380); }
+  // First time this class sees a species: show its picture and how far the collection has got.
+  function nsCelebrate(a) {
+    var el = $("arrive"), t = nsTally(), list = sceneSpecies(), n = list.filter(function (x) { return t.seen[x.id] > 0; }).length;
+    clearTimeout(arriveT);
+    el.className = "arrive " + a.rar;
+    el.innerHTML = tileSvg(a) + "<div><small>New animal spotted!</small><b>" + nsEsc(a.name) + '</b><p><span class="tg ' + a.rar + '">' + RAR[a.rar] + "</span>" +
+      (n >= list.length ? "That's every " + SCENES[curScene()].toLowerCase() + " animal. Amazing, " + nsEsc(C().name) + "!" : n + " of " + list.length + " found. " + (list.length - n) + " still hiding.") + "</p></div>";
+    el.hidden = true; void el.offsetWidth; el.hidden = false;
+    arriveT = setTimeout(nsCelebrateHide, 7000);
+    var ab = $("animalsBtn"); ab.classList.remove("bump"); void ab.offsetWidth; ab.classList.add("bump"); setTimeout(function () { ab.classList.remove("bump"); }, 2500);
+  }
   // A quiet stretch earned an animal: add it to the class collection, then bring it out.
   function nsArrive() {
     var pick = out().length < MAX_OUT ? chooseArrival() : null;
@@ -3119,7 +3212,8 @@
     t.total++; t.today++; t.seen[pick.a.id] = (t.seen[pick.a.id] || 0) + 1; ns.session++; save();
     nsSpawn(pick.a, pick.s);
     nsChime(); renderAnimalsCount();
-    toastHtml("<b>" + nsEsc(pick.a.name) + (first ? " (first sighting!)" : "") + '</b><span class="tg ' + pick.a.rar + '">' + RAR[pick.a.rar] + "</span>" + (pick.a.intro ? '<span class="tg intro">Introduced</span>' : ""), 4500);
+    if (first) nsCelebrate(pick.a);
+    else toastHtml("<b>" + nsEsc(pick.a.name) + '</b><span class="tg ' + pick.a.rar + '">' + RAR[pick.a.rar] + "</span>" + (pick.a.intro ? '<span class="tg intro">Introduced</span>' : ""), 4500);
     nsRenderListen();
   }
 
@@ -3398,6 +3492,7 @@
 
   function nsInit() {
     $("lGo").addEventListener("click", nsStartMic);
+    $("arrive").addEventListener("click", nsCelebrateHide);
     $("lPause").addEventListener("click", nsTogglePause);
     $("lLoud").addEventListener("click", nsTooLoud);
     $("lSet").addEventListener("click", function () { openSettings(true); });
